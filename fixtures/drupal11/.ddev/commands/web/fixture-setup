@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+## Description: Install and seed the owned DBGpilot Drupal 11 fixture.
+## Usage: fixture-setup
+## Example: "ddev fixture-setup"
+
+set -euo pipefail
+export XDEBUG_MODE=off
+cd /var/www/html
+
+php -r '
+$file = "web/sites/default/settings.php";
+$include = "require DRUPAL_ROOT . \"/../settings.dbgpilot.php\";";
+if (!str_contains(file_get_contents($file), $include)) {
+    chmod($file, 0664);
+    file_put_contents($file, "\n// DBGpilot local fixture settings.\n" . $include . "\n", FILE_APPEND);
+}
+'
+
+if [[ "$(vendor/bin/drush status --field=bootstrap 2>/dev/null || true)" != "Successful" ]]; then
+  # Never reinstall over a populated database that simply failed to bootstrap.
+  php -r '
+  $db = new PDO("mysql:host=db;dbname=db", "db", "db");
+  if ($db->query("SHOW TABLES")->fetchColumn() !== false) {
+      fwrite(STDERR, "Fixture database is populated but Drupal cannot bootstrap; repair it before rerunning setup.\n");
+      exit(1);
+  }
+  '
+  vendor/bin/drush site:install standard --db-url=mysql://db:db@db/db \
+    --account-name=admin --account-pass=dbgpilot-admin \
+    --site-name="DBGpilot Drupal 11" --locale=en --yes
+fi
+
+vendor/bin/drush php:script /var/www/html/seed.php
+vendor/bin/drush cache:rebuild

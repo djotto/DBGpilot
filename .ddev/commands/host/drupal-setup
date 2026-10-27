@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+## Description: Start and seed the separate pinned Drupal 11 acceptance fixture.
+## Usage: drupal-setup
+## Example: "ddev drupal-setup"
+
+set -euo pipefail
+exec "${DDEV_APPROOT}/scripts/setup_drupal.sh"

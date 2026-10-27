@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+## Description: Install DBGpilot's browser and compatibility test tooling.
+## Usage: test-setup
+## Example: "ddev test-setup"
+
+set -euo pipefail
+/mnt/ddev_config/commands/web/poetry install --no-interaction
+/mnt/ddev_config/commands/web/poetry run playwright install --with-deps chromium
+/mnt/ddev_config/commands/web/poetry run python scripts/prepare_test_runtimes.py

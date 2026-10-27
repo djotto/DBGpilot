@@ -1,0 +1,13 @@
+.venv/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hypothesis/
+test-results/
+playwright-report/
+fixtures/drupal11/vendor/
+fixtures/drupal11/web/
+fixtures/drupal11/fixture-state.json

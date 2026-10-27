@@ -1,0 +1,13 @@
+name: dbgpilot-drupal11
+type: drupal11
+docroot: web
+php_version: "8.4"
+webserver_type: nginx-fpm
+xdebug_enabled: true
+database:
+  type: mariadb
+  version: "11.8"
+composer_version: "2"
+nodejs_version: "24"
+use_dns_when_possible: true
+timezone: Europe/London

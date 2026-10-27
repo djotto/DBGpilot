@@ -1,0 +1,59 @@
+[project]
+name = "dbgpilot"
+version = "0.1.0"
+description = "An asynchronous Python controller for Xdebug's DBGp protocol"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = []
+license = "MIT"
+keywords = ["xdebug", "dbgp", "debugger", "asyncio", "php"]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+
+[project.scripts]
+dbgpilot = "dbgpilot.cli:main"
+
+[build-system]
+requires = ["poetry-core==2.1.1"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{ include = "dbgpilot", from = "src" }]
+include = [
+    { path = "CHANGELOG.md", format = "sdist" },
+    { path = "poetry.lock", format = "sdist" },
+    { path = "dbgpilot.example.toml", format = "sdist" },
+    { path = "docs", format = "sdist" },
+    { path = "examples", format = "sdist" },
+    { path = "scripts", format = "sdist" },
+]
+exclude = [
+    "fixtures/**", "public/**", "src/checkout.php", "tests/**",
+    "test-results/**", ".ddev/**", ".git/**", ".venv/**", "dist/**",
+    "HANDOFF.md", "HANDOVER.md", "TODO.md", "**/__pycache__/**", "**/*.pyc",
+    "**/.DS_Store",
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3,<10"
+pytest-asyncio = ">=1.0,<2"
+hypothesis = ">=6,<7"
+playwright = "^1.64.1"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "integration: live PHP/Xdebug tests inside DDEV",
+    "browser: actual Chromium/Playwright acceptance tests",
+    "compatibility: real PHP/Xdebug version matrix",
+    "stress: concurrency, long pauses, shutdown and restart tests",
+    "drupal: real Drupal 11 acceptance tests in the separate DDEV fixture",
+]
+filterwarnings = ["error"]

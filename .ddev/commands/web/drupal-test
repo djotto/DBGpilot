@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+## Description: Run Drupal 11 acceptance tests; first run ddev drupal-setup.
+## Usage: drupal-test
+## Example: "ddev drupal-test"
+
+set -euo pipefail
+export DBGPILOT_REQUIRE_DRUPAL=1
+exec /mnt/ddev_config/commands/web/poetry run pytest -m drupal --tb=short "$@"

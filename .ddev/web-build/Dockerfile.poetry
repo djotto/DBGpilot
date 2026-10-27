@@ -1,0 +1,5 @@
+# Keep Poetry separate from the project's Python environment.
+RUN python3 -m venv /opt/poetry \
+    && /opt/poetry/bin/python -m pip install --no-cache-dir poetry==2.1.1
+
+ENV PATH="/opt/poetry/bin:${PATH}"

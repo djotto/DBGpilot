@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+## Description: Run Poetry using a container-local Python environment.
+## Usage: poetry [arguments]
+## Example: "ddev poetry install", "ddev poetry run python scripts/check_harness.py"
+
+set -euo pipefail
+
+# The host's .venv contains macOS binaries and must not be used in Linux.
+export POETRY_VIRTUALENVS_IN_PROJECT=false
+export POETRY_CACHE_DIR="/mnt/ddev-global-cache/poetry/${DDEV_SITENAME}"
+export POETRY_VIRTUALENVS_PATH="${POETRY_CACHE_DIR}/virtualenvs"
+export PLAYWRIGHT_BROWSERS_PATH="/mnt/ddev-global-cache/dbgpilot/playwright"
+
+exec poetry "$@"

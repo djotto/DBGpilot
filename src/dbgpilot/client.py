@@ -236,6 +236,12 @@ class RemoteRequest:
 
 
 class RemoteSession:
+    """Send commands and retrieve events for a server-owned session by ID.
+
+    The session can be accessed through another client using the same ID.
+    close() explicitly releases the debugging session on the server.
+    """
+
     def __init__(self, client, session_id, initial_info=None):
         self.client, self.id = client, session_id
         self.initial_info = initial_info

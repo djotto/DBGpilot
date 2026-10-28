@@ -162,9 +162,13 @@ class Server:
             owner = self
 
             class Handler(_Handler):
+                """Bind HTTP request handling to this server instance."""
+
                 pilot = owner
 
             class HTTPServer(ThreadingHTTPServer):
+                """Limit concurrent connections and track sockets for shutdown."""
+
                 address_family = socket.AF_INET6 if ":" in owner.host else socket.AF_INET
                 request_queue_size = 64
                 slots = threading.BoundedSemaphore(owner.max_http_connections)

@@ -22,6 +22,12 @@ DEFAULT_FEATURES = {
 
 
 class Controller:
+    """Accept DBGp connections and own their sessions and proxy registrations.
+
+    Incoming sessions complete the handshake before becoming available through
+    wait_for_session(). Closing the controller closes its sessions and listener.
+    """
+
     def __init__(
         self, host="127.0.0.1", port=9003, *, command_timeout=5.0,
         execution_timeout=None, handshake_timeout=5.0, max_packet_size=16 * 1024 * 1024,

@@ -40,6 +40,8 @@ class SessionStateError(DBGpilotError):
 
 
 class CommandError(DBGpilotError):
+    """An engine-rejected DBGp command with its error code and response details."""
+
     def __init__(self, command: str, code: int, message: str, *, attributes=None, xml=None):
         self.command = command
         self.code = code

@@ -20,6 +20,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class BreakpointSpec:
+    """A source location and options for a breakpoint installed during capture."""
+
     file: str | None = None
     line: int | None = None
     options: dict = field(default_factory=dict)
@@ -31,6 +33,12 @@ class BreakpointSpec:
 
 @dataclass(eq=False)
 class PausedBrowser:
+    """A captured PHP pause, its snapshot, and the pending browser action.
+
+    The session remains available for inspection until explicitly resumed or
+    closed. Closing the capture releases the session and settles its action.
+    """
+
     session_id: str
     snapshot: dict
     action: asyncio.Task
@@ -83,6 +91,12 @@ class PausedBrowser:
 
 
 class PlaywrightDebugger:
+    """Coordinate browser requests with server-owned PHP debugging sessions.
+
+    Captures install breakpoints and return a PausedBrowser while PHP is paused.
+    Closing the debugger releases its captures and outstanding browser actions.
+    """
+
     def __init__(self, page, client, *, idekey=None):
         self.page, self.client = page, client
         self.idekey = idekey

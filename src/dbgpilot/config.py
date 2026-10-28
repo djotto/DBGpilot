@@ -13,6 +13,8 @@ from .paths import PathMapper
 
 @dataclass(frozen=True)
 class SetupConfig:
+    """Validated connection, process startup, and source path mapping settings."""
+
     url: str = "http://127.0.0.1:9004"
     token: str | None = field(default=None, repr=False)
     request_timeout: float = 35

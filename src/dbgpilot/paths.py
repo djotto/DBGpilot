@@ -75,6 +75,8 @@ def _remote(uri):
 
 @dataclass(frozen=True)
 class PathMapping:
+    """A local directory and engine URI root with an optional remote case policy."""
+
     local: str
     remote: str
     remote_case_sensitive: bool | None = None

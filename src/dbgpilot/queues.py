@@ -5,6 +5,8 @@ from collections import deque
 
 
 class RetainedQueue:
+    """A synchronous FIFO with an asyncio event signaling available items."""
+
     def __init__(self, maxsize=0):
         self.maxsize = maxsize
         self._items = deque()

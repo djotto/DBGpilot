@@ -11,6 +11,8 @@ from .protocol import NAMESPACE, _quote, read_proxy_response
 
 
 class ProxyClient:
+    """Register or unregister an IDE key using a separate connection per command."""
+
     def __init__(self, host="127.0.0.1", port=9001, *, timeout=5, max_response_bytes=1024 * 1024):
         if not isinstance(host, str) or not host:
             raise ValueError("Proxy host must be a nonempty string")

@@ -23,6 +23,12 @@ class SetupError(DBGpilotError):
 
 
 class DebuggerSetup:
+    """Connect to an existing server or launch and validate an owned process.
+
+    Context exit closes the client while the server and paused sessions survive.
+    shutdown(release_sessions=True) explicitly terminates an owned server.
+    """
+
     def __init__(self, *, config=None, discover=False, **overrides):
         self.config = load_config(config, discover=discover, **overrides)
         self.client = None

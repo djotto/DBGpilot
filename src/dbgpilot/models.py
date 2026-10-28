@@ -37,6 +37,8 @@ def _json_value(value):
 
 @dataclass(frozen=True)
 class Property:
+    """An engine property with decoded and raw values, children, and paging metadata."""
+
     name: str
     fullname: str
     type: str
@@ -127,6 +129,8 @@ def parse_property(node: ET.Element, type_map=None) -> Property:
 
 @dataclass(frozen=True)
 class SessionInfo:
+    """Session identity and engine metadata from the DBGp initialization packet."""
+
     id: str
     appid: str
     idekey: str
@@ -147,6 +151,8 @@ class SessionInfo:
 
 @dataclass(frozen=True)
 class TypeMapping:
+    """An engine language type mapped to a DBGp common type and optional schema type."""
+
     language_type: str
     common_type: str
     schema_type: str | None = None
@@ -155,6 +161,8 @@ class TypeMapping:
 
 @dataclass(frozen=True)
 class PropertyValue:
+    """Raw property bytes with engine-reported size, encoding, and targeting metadata."""
+
     data: bytes
     size: int
     encoding: str = "none"
@@ -172,6 +180,8 @@ class PropertyValue:
 
 @dataclass(frozen=True)
 class Feature:
+    """An engine feature's support flag and reported or configured string value."""
+
     supported: bool
     value: str
 
@@ -182,6 +192,8 @@ class Feature:
 
 @dataclass(frozen=True)
 class Frame:
+    """A stack frame with its engine location, optional local path, and input frames."""
+
     level: int
     file: str
     line: int
@@ -213,6 +225,8 @@ def parse_frame(node: ET.Element) -> Frame:
 
 @dataclass(frozen=True)
 class ExecutionResult:
+    """Execution status with any reported source location, exception, and breakpoint."""
+
     status: str
     reason: str
     file: str | None = None
@@ -235,6 +249,8 @@ class ExecutionResult:
 
 @dataclass(frozen=True)
 class InteractiveResult:
+    """An interactive response with execution status, continuation flag, and prompt."""
+
     status: str
     more: bool
     prompt: str
@@ -255,6 +271,8 @@ def parse_interaction(node):
 
 @dataclass(frozen=True)
 class ProxyRegistration:
+    """A proxy control response with IDE registration settings and raw proxy metadata."""
+
     command: str
     idekey: str
     proxy_host: str
@@ -297,6 +315,8 @@ def execution_result(node: ET.Element) -> ExecutionResult:
 
 @dataclass(frozen=True)
 class Breakpoint:
+    """An engine breakpoint's identity, location, condition, and resolution state."""
+
     id: str
     type: str
     file: str | None = None
@@ -336,6 +356,8 @@ def parse_breakpoint(node: ET.Element) -> Breakpoint:
 
 @dataclass(frozen=True)
 class Spawnpoint:
+    """An engine location configured to start another debugging session."""
+
     id: str
     file: str | None = None
     line: int | None = None
@@ -364,12 +386,16 @@ def parse_spawnpoint(node: ET.Element) -> Spawnpoint:
 
 @dataclass(frozen=True)
 class StreamEvent:
+    """Raw bytes received from an engine output stream such as stdout or stderr."""
+
     stream: str
     data: bytes
 
 
 @dataclass(frozen=True)
 class NotificationEvent:
+    """An engine notification preserving XML, data, and any breakpoint or message."""
+
     name: str
     xml: str
     data: bytes
@@ -379,6 +405,8 @@ class NotificationEvent:
 
 @dataclass(frozen=True)
 class NotificationMessage:
+    """Notification text with optional source location and engine attributes."""
+
     text: str
     file: str | None = None
     line: int | None = None
@@ -404,26 +432,36 @@ def parse_notification(node: ET.Element) -> NotificationEvent:
 
 @dataclass(frozen=True)
 class StoppedEvent:
+    """An event reporting that execution has reached a paused breakpoint state."""
+
     result: ExecutionResult
 
 
 @dataclass(frozen=True)
 class ClosedEvent:
+    """The terminal session event carrying the reason its connection closed."""
+
     error: Exception
 
 
 @dataclass(frozen=True)
 class ProxyErrorEvent:
+    """A proxy error received asynchronously on a session's DBGp connection."""
+
     error: ProxyError
 
 
 @dataclass(frozen=True)
 class InteractiveEvent:
+    """An event carrying an interactive command's status, prompt, and buffering state."""
+
     result: InteractiveResult
 
 
 @dataclass(frozen=True)
 class Snapshot:
+    """A session's execution state, stack, requested variables, and evaluated expressions."""
+
     session_id: str
     execution: ExecutionResult
     frames: tuple[Frame, ...]

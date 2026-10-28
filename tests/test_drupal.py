@@ -133,6 +133,7 @@ async def test_drupal_core_snapshot_reconnect_mutation_and_unchanged_database(br
             record("core_view", snapshot, rendered_title=changed, persisted_title=drupal["node_title"])
 
 
+@pytest.mark.flaky(reason="Intermittent 30-second timeout opening the Drupal form during login")
 async def test_drupal_form_save_reconnect_mutation_and_database_persistence(browser_page, drupal):
     await login(browser_page, drupal)
     await browser_page.goto(drupal["test_url"] + "/node/add/page")

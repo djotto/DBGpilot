@@ -56,5 +56,6 @@ markers = [
     "compatibility: real PHP/Xdebug version matrix",
     "stress: concurrency, long pauses, shutdown and restart tests",
     "drupal: real Drupal 11 acceptance tests in the separate DDEV fixture",
+    "flaky: intermittent failure; investigate before treating as a regression",
 ]
 filterwarnings = ["error"]

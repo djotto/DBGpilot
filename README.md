@@ -163,9 +163,7 @@ poetry build
 ```
 
 The development dependencies are pytest, pytest-asyncio, Hypothesis, and
-Playwright. Browser installation is separate (`ddev test-setup`). The
-three reference debugger dependencies and their vendored source have been
-removed; DBGpilot runs and is tested independently.
+Playwright. Browser installation is separate (`ddev test-setup`).
 
 ## DDEV integration harness
 
@@ -221,3 +219,24 @@ Open https://dbgpilot-drupal11.ddev.site; fixture login is
 `admin` / `dbgpilot-admin`. Its own database is separate from the checkout site.
 See [the Drupal guide](docs/drupal.md) for setup, manual debugging, path mappings,
 recorded results, and the observed render-Fiber stack behaviour.
+
+## References and provenance
+
+While building DBGpilot, we consulted the
+[DBGp specification](https://xdebug.org/docs/dbgp),
+[Xdebug's implementation](https://github.com/xdebug/xdebug), and these debugger
+projects as design and interoperability references:
+
+- [Komodo Python DBGp](https://github.com/agroszer/komodo-python3-dbgp)
+- [Vdebug](https://github.com/vim-vdebug/vdebug)
+- [Pugdebug](https://github.com/Mte90/pugdebug)
+
+The three debugger projects were initially included as development references.
+Their dependencies, associated Qt packages, and vendored snapshots have since
+been removed. DBGpilot is an original implementation that runs and is tested
+independently; no implementation code from those projects is copied, imported,
+or bundled.
+
+See [NOTICE.md](NOTICE.md) for provenance and the
+[development notes](docs/development.md#design-references-and-provenance) for the
+specific revisions and topics consulted.

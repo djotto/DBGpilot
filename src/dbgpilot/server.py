@@ -23,6 +23,7 @@ import threading
 import uuid
 from urllib.parse import urlsplit
 
+from ._arguments import normalize_arguments
 from .controller import Controller
 from ._version import __version__
 from .errors import (
@@ -276,10 +277,12 @@ class Server:
             return
 
     def _prune(self):
-        closed = sorted(((record.closed_at, id) for id, record in self._records.items()
-                         if record.closed_at is not None))
-        for _, id in closed[:max(0, len(closed) - self.max_closed_sessions)]:
-            del self._records[id]
+        closed = sorted(
+            (record.closed_at, session_id) for session_id, record in self._records.items()
+            if record.closed_at is not None
+        )
+        for _, session_id in closed[:max(0, len(closed) - self.max_closed_sessions)]:
+            del self._records[session_id]
 
     def _record(self, session_id):
         if not isinstance(session_id, str):
@@ -323,10 +326,10 @@ class Server:
     def _prune_cancellations(self):
         now = self._loop.time()
         while self._cancelled:
-            id, expiry = next(iter(self._cancelled.items()))
+            request_id, expiry = next(iter(self._cancelled.items()))
             if expiry > now and len(self._cancelled) <= 1024:
                 break
-            self._cancelled.pop(id)
+            self._cancelled.pop(request_id)
 
     def _cancel_request(self, request_id):
         if isinstance(request_id, bool) or not isinstance(request_id, (str, int)):
@@ -413,7 +416,7 @@ class Server:
                 raise _invalid(f"{name} must be a nonnegative integer")
         for name in (
             "file", "name", "kind", "function", "exception", "state",
-            "hit_condition", "stream", "id", "key", "address",
+            "hit_condition", "stream", "id", "breakpoint_id", "spawnpoint_id", "key", "address",
         ):
             value = params.get(name)
             if value is not None and not isinstance(value, str):
@@ -513,6 +516,7 @@ class Server:
             partial(self._break_and_return, session) if name == "break_and_return"
             else getattr(session, name)
         )
+        params = normalize_arguments(target, params)
         inspect.signature(target).bind(**params)
         if name in {"interrupt", "status"}:
             response = await target(**params)

@@ -6,6 +6,7 @@ import json
 from urllib.parse import urlsplit
 import uuid
 
+from ._arguments import keyword_aliases
 from .errors import ConnectionClosed, ProtocolError
 from .wire import RemoteError, json_value
 
@@ -354,21 +355,24 @@ class RemoteSession:
         return await self.call("set_spawnpoint", file=str(file) if file is not None else None,
                                line=line, state=state)
 
-    async def get_spawnpoint(self, id):
+    @keyword_aliases(id="spawnpoint_id")
+    async def get_spawnpoint(self, spawnpoint_id):
         """Return the engine's spawnpoint record for an ID."""
-        return await self.call("get_spawnpoint", id=id)
+        return await self.call("get_spawnpoint", id=spawnpoint_id)
 
     async def spawnpoints(self):
         """Return all spawnpoint records reported by the engine."""
         return await self.call("spawnpoints")
 
-    async def update_spawnpoint(self, id, *, state=None, line=None):
+    @keyword_aliases(id="spawnpoint_id")
+    async def update_spawnpoint(self, spawnpoint_id, *, state=None, line=None):
         """Change a spawnpoint's state or line through the server."""
-        return await self.call("update_spawnpoint", id=id, state=state, line=line)
+        return await self.call("update_spawnpoint", id=spawnpoint_id, state=state, line=line)
 
-    async def remove_spawnpoint(self, id):
+    @keyword_aliases(id="spawnpoint_id")
+    async def remove_spawnpoint(self, spawnpoint_id):
         """Remove a spawnpoint by ID through the server."""
-        return await self.call("remove_spawnpoint", id=id)
+        return await self.call("remove_spawnpoint", id=spawnpoint_id)
 
     async def stdin(self, *, mode=None, data=None, timeout=5):
         """Configure stdin redirection or send input data, supplying exactly one of them."""

@@ -102,7 +102,7 @@ after detach because official dbgpProxy 0.6.2 drops the terminal reply; see the
   and a `truncated` indicator. Its `to_dict()` represents binary data safely.
 - `evaluate(expression, depth=0, page=0, timeout=...)` evaluates in the selected
   frame where supported, with execution-state management.
-- `property_set(name, expression, type=None, context=0, depth=0, address=None)`
+- `property_set(name, expression, property_type=None, context=0, depth=0, address=None)`
   sends an engine-native string or byte payload. Xdebug evaluates it as PHP code,
   even with a type argument. Other engines define their assignment semantics.
 - `set_value(name, value, context=0, depth=0, address=None)` safely represents a Python string,
@@ -148,8 +148,11 @@ state, and resolution information when supplied by the engine or known at
 creation. Continuation results include structured breakpoint details when sent.
 Initialization requests `breakpoint_details` by default.
 
-Use `get_breakpoint(id)`, `breakpoints()`, `update_breakpoint(id, ...)`, and
-`remove_breakpoint(id)`. The tested engine disables temporary breakpoints instead
+Use `get_breakpoint(breakpoint_id)`, `breakpoints()`,
+`update_breakpoint(breakpoint_id, ...)`, and `remove_breakpoint(breakpoint_id)`.
+The legacy Python keywords `id` and `type` remain accepted for breakpoint IDs
+and property types; JSON-RPC fields retain those names.
+The tested engine disables temporary breakpoints instead
 of deleting them, and disables them before checking hit thresholds. To combine
 those behaviours, use a normal hit-count breakpoint and remove it after the stop.
 `known_breakpoints` is a read-only map of last observed records, updated by

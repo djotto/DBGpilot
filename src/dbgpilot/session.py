@@ -11,6 +11,7 @@ import uuid
 import math
 import xml.etree.ElementTree as ET
 
+from ._arguments import keyword_aliases
 from .errors import (
     CommandError, ConnectionClosed, DBGpilotError, ExecutionFinished,
     ProtocolError, SessionStateError,
@@ -810,7 +811,8 @@ class Session:
         return PropertyValue(data, size, node.get("encoding", "none"), result_page,
                              node.get("key", key), node.get("address", address))
 
-    async def property_set(self, name, expression: str | bytes, *, type=None, context=0,
+    @keyword_aliases(type="property_type")
+    async def property_set(self, name, expression: str | bytes, *, property_type=None, context=0,
                            depth=0, address=None) -> bool:
         """Assign an engine-native payload; Xdebug evaluates it as PHP code."""
         self._require_paused()
@@ -821,7 +823,7 @@ class Session:
             )
         raw = expression.encode("utf-8") if isinstance(expression, str) else expression
         node = await self.command("property_set", {
-            "n": name, "c": context, "d": depth, "t": type, "l": len(raw), "a": address,
+            "n": name, "c": context, "d": depth, "t": property_type, "l": len(raw), "a": address,
         }, raw)
         return node.get("success") == "1"
 
@@ -968,7 +970,7 @@ class Session:
         ))
 
     def _finish_breakpoint(self, command, arguments, data, node):
-        id = arguments.get("d")
+        breakpoint_id = arguments.get("d")
         if command == "breakpoint_set":
             point = self._created_breakpoint(arguments, data, node)
             self._breakpoints[point.id] = point
@@ -977,9 +979,9 @@ class Session:
             if len(points) != 1:
                 raise ProtocolError("breakpoint_get requires one breakpoint")
             point = self._located(parse_breakpoint(points[0]))
-            if point.id != id:
+            if point.id != breakpoint_id:
                 raise ProtocolError("breakpoint_get returned a different ID")
-            self._breakpoints[id] = point
+            self._breakpoints[breakpoint_id] = point
         elif command == "breakpoint_list":
             points = tuple(
                 self._located(parse_breakpoint(child)) for child in node.findall("{*}breakpoint")
@@ -988,17 +990,18 @@ class Session:
                 raise ProtocolError("breakpoint_list returned duplicate IDs")
             self._breakpoints.clear()
             self._breakpoints.update((point.id, point) for point in points)
-        elif command == "breakpoint_update" and id in self._breakpoints:
+        elif command == "breakpoint_update" and breakpoint_id in self._breakpoints:
             changes = {key: arguments[option] for key, option in (
                 ("state", "s"), ("line", "n"), ("hit_value", "h"), ("hit_condition", "o"),
             ) if arguments.get(option) is not None}
-            self._breakpoints[id] = replace(self._breakpoints[id], **changes)
+            self._breakpoints[breakpoint_id] = replace(self._breakpoints[breakpoint_id], **changes)
         elif command == "breakpoint_remove":
-            self._breakpoints.pop(id, None)
+            self._breakpoints.pop(breakpoint_id, None)
 
-    async def get_breakpoint(self, id: str) -> Breakpoint:
+    @keyword_aliases(id="breakpoint_id")
+    async def get_breakpoint(self, breakpoint_id: str) -> Breakpoint:
         """Fetch a breakpoint by ID and return its mapped source metadata."""
-        node = await self.command("breakpoint_get", {"d": id})
+        node = await self.command("breakpoint_get", {"d": breakpoint_id})
         bp = node.find("{*}breakpoint")
         if bp is None:
             raise ProtocolError("breakpoint_get returned no breakpoint")
@@ -1013,8 +1016,9 @@ class Session:
         )
         return results
 
+    @keyword_aliases(id="breakpoint_id")
     async def update_breakpoint(
-        self, id, *, state=None, line=None, hit_value=None, hit_condition=None,
+        self, breakpoint_id, *, state=None, line=None, hit_value=None, hit_condition=None,
     ):
         """Update a breakpoint's state, line, or hit condition after validating options."""
         if state not in {None, "enabled", "disabled"}:
@@ -1026,16 +1030,17 @@ class Session:
         ):
             raise ValueError("Invalid breakpoint hit condition")
         await self.command("breakpoint_update", {
-            "d": id, "s": state, "n": line, "h": hit_value, "o": hit_condition,
+            "d": breakpoint_id, "s": state, "n": line, "h": hit_value, "o": hit_condition,
         })
 
-    async def remove_breakpoint(self, id):
+    @keyword_aliases(id="breakpoint_id")
+    async def remove_breakpoint(self, breakpoint_id):
         """Remove a breakpoint from the engine by ID."""
-        await self.command("breakpoint_remove", {"d": id})
+        await self.command("breakpoint_remove", {"d": breakpoint_id})
 
     @staticmethod
-    def _spawnpoint_options(*, id=None, line=None, state=None):
-        if id is not None and (not isinstance(id, str) or not id):
+    def _spawnpoint_options(*, spawnpoint_id=None, line=None, state=None):
+        if spawnpoint_id is not None and (not isinstance(spawnpoint_id, str) or not spawnpoint_id):
             raise ValueError("Spawnpoint ID must be a nonempty string")
         if line is not None and (isinstance(line, bool) or not isinstance(line, int) or line < 1):
             raise ValueError("Spawnpoint line must be a positive integer")
@@ -1044,7 +1049,7 @@ class Session:
 
     def _finish_spawnpoint(self, command, arguments, node):
         """Validate before updating the inventory, also for abandoned requests."""
-        id = arguments.get("d")
+        spawnpoint_id = arguments.get("d")
         if command == "spawnpoint_set":
             point = parse_spawnpoint(node)
             point = self._located(replace(point, file=arguments.get("f"), line=arguments.get("n")))
@@ -1054,7 +1059,7 @@ class Session:
             if len(points) != 1:
                 raise ProtocolError("spawnpoint_get requires one spawnpoint")
             point = self._located(parse_spawnpoint(points[0]))
-            if point.id != id:
+            if point.id != spawnpoint_id:
                 raise ProtocolError("spawnpoint_get returned a different ID")
             self._spawnpoints[point.id] = point
         elif command == "spawnpoint_list":
@@ -1065,13 +1070,13 @@ class Session:
                 raise ProtocolError("spawnpoint_list returned duplicate IDs")
             self._spawnpoints.clear()
             self._spawnpoints.update((point.id, point) for point in points)
-        elif command == "spawnpoint_update" and id in self._spawnpoints:
+        elif command == "spawnpoint_update" and spawnpoint_id in self._spawnpoints:
             changes = {key: arguments[option] for key, option in (("state", "s"), ("line", "n"))
                        if arguments.get(option) is not None}
             # XML/attributes remain the last actual engine response, not invented metadata.
-            self._spawnpoints[id] = replace(self._spawnpoints[id], **changes)
+            self._spawnpoints[spawnpoint_id] = replace(self._spawnpoints[spawnpoint_id], **changes)
         elif command == "spawnpoint_remove":
-            self._spawnpoints.pop(id, None)
+            self._spawnpoints.pop(spawnpoint_id, None)
 
     async def set_spawnpoint(self, file: str | Path | None = None, line: int | None = None,
                              *, state="enabled") -> Spawnpoint:
@@ -1088,13 +1093,14 @@ class Session:
         node = await self.command("spawnpoint_set", {"f": uri, "n": line, "s": state})
         return self._located(replace(parse_spawnpoint(node), file=uri, line=line))
 
-    async def get_spawnpoint(self, id: str) -> Spawnpoint:
+    @keyword_aliases(id="spawnpoint_id")
+    async def get_spawnpoint(self, spawnpoint_id: str) -> Spawnpoint:
         """Fetch a spawnpoint by ID after confirming engine support for the command."""
-        if id is None:
+        if spawnpoint_id is None:
             raise ValueError("Spawnpoint ID must be a nonempty string")
-        self._spawnpoint_options(id=id)
+        self._spawnpoint_options(spawnpoint_id=spawnpoint_id)
         await self._require_command("spawnpoint_get")
-        node = await self.command("spawnpoint_get", {"d": id})
+        node = await self.command("spawnpoint_get", {"d": spawnpoint_id})
         return self._located(parse_spawnpoint(node.find("{*}spawnpoint")))
 
     async def spawnpoints(self) -> tuple[Spawnpoint, ...]:
@@ -1105,23 +1111,25 @@ class Session:
             self._located(parse_spawnpoint(child)) for child in node.findall("{*}spawnpoint")
         )
 
-    async def update_spawnpoint(self, id: str, *, state=None, line=None):
+    @keyword_aliases(id="spawnpoint_id")
+    async def update_spawnpoint(self, spawnpoint_id: str, *, state=None, line=None):
         """Change a spawnpoint's state or line, requiring at least one supplied update."""
-        if id is None:
+        if spawnpoint_id is None:
             raise ValueError("Spawnpoint ID must be a nonempty string")
-        self._spawnpoint_options(id=id, line=line, state=state)
+        self._spawnpoint_options(spawnpoint_id=spawnpoint_id, line=line, state=state)
         if state is None and line is None:
             raise ValueError("Provide at least one spawnpoint update")
         await self._require_command("spawnpoint_update")
-        await self.command("spawnpoint_update", {"d": id, "s": state, "n": line})
+        await self.command("spawnpoint_update", {"d": spawnpoint_id, "s": state, "n": line})
 
-    async def remove_spawnpoint(self, id: str):
+    @keyword_aliases(id="spawnpoint_id")
+    async def remove_spawnpoint(self, spawnpoint_id: str):
         """Remove a spawnpoint by ID after confirming engine support for the command."""
-        if id is None:
+        if spawnpoint_id is None:
             raise ValueError("Spawnpoint ID must be a nonempty string")
-        self._spawnpoint_options(id=id)
+        self._spawnpoint_options(spawnpoint_id=spawnpoint_id)
         await self._require_command("spawnpoint_remove")
-        await self.command("spawnpoint_remove", {"d": id})
+        await self.command("spawnpoint_remove", {"d": spawnpoint_id})
 
     async def snapshot(
         self, variables: Iterable[str] = (), *, expressions: Iterable[str] = (), depth=0, context=0,

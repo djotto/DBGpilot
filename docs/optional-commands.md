@@ -77,10 +77,13 @@ or arrays. Methods map to the five separate capability names:
 | Python method | DBGp command |
 | --- | --- |
 | `set_spawnpoint(file=None, line=None, state="enabled")` | `spawnpoint_set` |
-| `get_spawnpoint(id)` | `spawnpoint_get` |
-| `update_spawnpoint(id, state=None, line=None)` | `spawnpoint_update` |
-| `remove_spawnpoint(id)` | `spawnpoint_remove` |
+| `get_spawnpoint(spawnpoint_id)` | `spawnpoint_get` |
+| `update_spawnpoint(spawnpoint_id, state=None, line=None)` | `spawnpoint_update` |
+| `remove_spawnpoint(spawnpoint_id)` | `spawnpoint_remove` |
 | `spawnpoints()` | `spawnpoint_list` |
+
+The legacy Python keyword `id` remains accepted for `spawnpoint_id` in both
+direct and remote methods. JSON-RPC continues to accept the `id` field.
 
 File and line are optional when creating a spawnpoint. Paths become absolute
 file URIs; explicit `file://` URIs are preserved. Virtual `dbgp:` URIs are not

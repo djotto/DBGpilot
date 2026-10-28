@@ -15,7 +15,10 @@ class ProxyClient:
         if not isinstance(host, str) or not host:
             raise ValueError("Proxy host must be a nonempty string")
         self._port(port)
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+        if (
+            isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout) or timeout <= 0
+        ):
             raise ValueError("Proxy timeout must be positive and finite")
         if not isinstance(max_response_bytes, int) or max_response_bytes < 1:
             raise ValueError("Proxy response limit must be positive")
@@ -37,8 +40,10 @@ class ProxyClient:
         self._key(idekey)
         if not isinstance(multiple_sessions, bool):
             raise ValueError("multiple_sessions must be a boolean")
-        return await self._exchange("proxyinit", idekey, {"p": listen_port, "k": idekey, "m": int(multiple_sessions)},
-                                    listen_port=listen_port, multiple_sessions=multiple_sessions)
+        return await self._exchange(
+            "proxyinit", idekey, {"p": listen_port, "k": idekey, "m": int(multiple_sessions)},
+            listen_port=listen_port, multiple_sessions=multiple_sessions,
+        )
 
     async def unregister(self, idekey):
         self._key(idekey)
@@ -52,7 +57,9 @@ class ProxyClient:
         writer = None
         try:
             async with asyncio.timeout(self.timeout):
-                reader, writer = await asyncio.open_connection(self.host, self.port, limit=self.max_response_bytes + 32)
+                reader, writer = await asyncio.open_connection(
+                    self.host, self.port, limit=self.max_response_bytes + 32,
+                )
                 writer.write(packet)
                 await writer.drain()
                 node = await read_proxy_response(reader, self.max_response_bytes)
@@ -73,13 +80,17 @@ class ProxyClient:
                         self._port(port)
                     except ValueError as error:
                         raise ProtocolError("Proxy returned an invalid engine port") from error
-                return ProxyRegistration(command, idekey, self.host, self.port, **settings,
-                                         address=node.get("address"), port=port,
-                                         attributes=dict(node.attrib), xml=ET.tostring(node, encoding="unicode"))
+                return ProxyRegistration(
+                    command, idekey, self.host, self.port, **settings,
+                    address=node.get("address"), port=port,
+                    attributes=dict(node.attrib), xml=ET.tostring(node, encoding="unicode"),
+                )
         except OSError as error:
             if isinstance(error, TimeoutError):
                 raise
-            raise ConnectionClosed(f"Cannot contact DBGp proxy at {self.host}:{self.port}: {error}") from error
+            raise ConnectionClosed(
+                f"Cannot contact DBGp proxy at {self.host}:{self.port}: {error}",
+            ) from error
         finally:
             if writer is not None:
                 writer.close()

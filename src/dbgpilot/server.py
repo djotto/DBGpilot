@@ -2,7 +2,10 @@
 
 import asyncio
 from collections import OrderedDict, deque
-from concurrent.futures import CancelledError as FutureCancelledError, TimeoutError as FutureTimeoutError
+from concurrent.futures import (
+    CancelledError as FutureCancelledError,
+    TimeoutError as FutureTimeoutError,
+)
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -23,7 +26,8 @@ from urllib.parse import urlsplit
 from .controller import Controller
 from ._version import __version__
 from .errors import (
-    CommandError, ConnectionClosed, ExecutionFinished, PathMappingError, ProtocolError, ProxyError, SessionStateError,
+    CommandError, ConnectionClosed, ExecutionFinished, PathMappingError,
+    ProtocolError, ProxyError, SessionStateError,
 )
 from .models import ClosedEvent
 from .wire import RemoteError, binary_value, json_value
@@ -31,13 +35,17 @@ from .wire import RemoteError, binary_value, json_value
 LOGGER = logging.getLogger(__name__)
 SESSION_METHODS = frozenset((
     "status stack_depth typemap_get stack contexts context property_get property_children "
-    "property_value property_value_info property_set set_value evaluate expr exec source set_output "
+    "property_value property_value_info property_set set_value evaluate expr exec "
+    "source set_output "
     "set_breakpoint get_breakpoint breakpoints update_breakpoint remove_breakpoint "
     "set_spawnpoint get_spawnpoint spawnpoints update_spawnpoint remove_spawnpoint "
     "feature_get feature_set refresh_capabilities run resume run_until_break "
-    "step_into step_over step_out interrupt detach stop snapshot stdin set_stdin send_stdin interact"
+    "step_into step_over step_out interrupt detach stop snapshot stdin set_stdin "
+    "send_stdin interact"
 ).split())
-EXECUTION_METHODS = frozenset("run resume run_until_break step_into step_over step_out evaluate expr exec interact".split())
+EXECUTION_METHODS = frozenset(
+    "run resume run_until_break step_into step_over step_out evaluate expr exec interact".split()
+)
 
 
 @dataclass
@@ -196,8 +204,10 @@ class Server:
             self._http = HTTPServer((self.host, self.port), Handler)
             self._http.daemon_threads = True
             self.port = self._http.server_address[1]
-            self._thread = threading.Thread(target=partial(self._http.serve_forever, poll_interval=0.05),
-                                            name="dbgpilot-http", daemon=True)
+            self._thread = threading.Thread(
+                target=partial(self._http.serve_forever, poll_interval=0.05),
+                name="dbgpilot-http", daemon=True,
+            )
             self._thread.start()
             self._spawn(self._collect_sessions())
             self._spawn(self._collect_errors())
@@ -235,7 +245,9 @@ class Server:
         try:
             while True:
                 error = await self.controller.next_error()
-                self._errors.append({"time": datetime.now(timezone.utc).isoformat(), **json_value(error)})
+                self._errors.append({
+                    "time": datetime.now(timezone.utc).isoformat(), **json_value(error),
+                })
         except ConnectionClosed:
             return
 
@@ -266,7 +278,10 @@ class Server:
         if not isinstance(session_id, str):
             raise _invalid("session_id must be a string")
         if session_id not in self._records:
-            raise RemoteError(-32001, "Unknown or expired session", {"type": "UnknownSession", "session_id": session_id})
+            raise RemoteError(
+                -32001, "Unknown or expired session",
+                {"type": "UnknownSession", "session_id": session_id},
+            )
         return self._records[session_id]
 
     def _summary(self, record):
@@ -274,7 +289,8 @@ class Server:
         return {"session_id": session.info.id, "state": session.state, "closed": session.closed,
                 "claimed": record.claimed, "info": json_value(session.info),
                 "execution": session.last_result.to_dict(), "event_cursor": record.sequence,
-                "stdin_redirected": session.stdin_redirected, "stdin_waiting": session.stdin_waiting,
+                "stdin_redirected": session.stdin_redirected,
+                "stdin_waiting": session.stdin_waiting,
                 "interaction": json_value(session.last_interaction)}
 
     def health(self):
@@ -282,12 +298,17 @@ class Server:
                 "version": __version__,
                 "instance_id": self.instance_id,
                 "xdebug_host": self.controller.host, "xdebug_port": self.controller.port,
-                "live_sessions": sum(not record.session.closed for record in self._records.values()),
+                "live_sessions": sum(
+                    not record.session.closed for record in self._records.values()
+                ),
                 "proxies": json_value(self.controller.proxy_registrations),
                 "path_mappings": json_value(self.controller.path_mapper.mappings)}
 
     def _timeout(self, value=30):
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= self.max_wait:
+        if (
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            or not math.isfinite(value) or not 0 <= value <= self.max_wait
+        ):
             raise _invalid(f"timeout must be between 0 and {self.max_wait} seconds")
         return value
 
@@ -316,7 +337,9 @@ class Server:
         cancelled = any(task.cancel() for task in tuple(tasks))
         return {"request_id": request_id, "cancelled": cancelled, "submission_blocked": True}
 
-    async def _wait_for_session(self, *, idekey=None, cookie=None, appid=None, file=None, timeout=30):
+    async def _wait_for_session(
+        self, *, idekey=None, cookie=None, appid=None, file=None, timeout=30,
+    ):
         timeout = self._timeout(timeout)
         filters = {"idekey": idekey, "cookie": cookie, "appid": appid, "file": file}
         if any(value is not None and not isinstance(value, str) for value in filters.values()):
@@ -330,7 +353,10 @@ class Server:
                 for record in self._records.values():
                     if record.claimed or record.session.closed:
                         continue
-                    if all(value is None or getattr(record.session.info, key) == value for key, value in filters.items()):
+                    if all(
+                        value is None or getattr(record.session.info, key) == value
+                        for key, value in filters.items()
+                    ):
                         record.claimed = True
                         return self._summary(record)
                 await self._condition.wait()
@@ -346,14 +372,18 @@ class Server:
                 raise _invalid("Event cursor is ahead of this session")
             try:
                 async with asyncio.timeout(timeout):
-                    while after == record.sequence and record.closed_at is None and not self._closing:
+                    while (
+                        after == record.sequence and record.closed_at is None
+                        and not self._closing
+                    ):
                         await self._condition.wait()
             except TimeoutError:
                 pass
             oldest = record.events[0]["sequence"] if record.events else record.sequence + 1
             if after < oldest - 1:
                 raise RemoteError(-32008, "Event history expired", {
-                    "type": "EventHistoryLost", "oldest_cursor": oldest - 1, "latest_cursor": record.sequence,
+                    "type": "EventHistoryLost", "oldest_cursor": oldest - 1,
+                    "latest_cursor": record.sequence,
                 })
             events = [event for event in record.events if event["sequence"] > after][:limit]
             return {"events": events, "cursor": events[-1]["sequence"] if events else after,
@@ -364,11 +394,19 @@ class Server:
             if name in params and (not isinstance(params[name], list) or len(params[name]) > 256
                                    or any(not isinstance(item, str) for item in params[name])):
                 raise _invalid(f"{name} must be an array of at most 256 strings")
-        for name in ("depth", "context", "page", "line", "max_pages", "max_data", "hit_value", "begin", "end", "mode"):
+        for name in (
+            "depth", "context", "page", "line", "max_pages", "max_data",
+            "hit_value", "begin", "end", "mode",
+        ):
             value = params.get(name)
-            if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
                 raise _invalid(f"{name} must be a nonnegative integer")
-        for name in ("file", "name", "kind", "function", "exception", "state", "hit_condition", "stream", "id", "key", "address"):
+        for name in (
+            "file", "name", "kind", "function", "exception", "state",
+            "hit_condition", "stream", "id", "key", "address",
+        ):
             value = params.get(name)
             if value is not None and not isinstance(value, str):
                 raise _invalid(f"{name} must be a string")
@@ -407,7 +445,10 @@ class Server:
             return self.controller.proxy_registrations
         if method in {"proxy.register", "proxy.unregister"}:
             self._validate_params(params)
-            target = self.controller.register_proxy if method == "proxy.register" else self.controller.unregister_proxy
+            target = (
+                self.controller.register_proxy if method == "proxy.register"
+                else self.controller.unregister_proxy
+            )
             inspect.signature(target).bind(**params)
             return await target(**params)
         if method == "cancel_request":
@@ -460,7 +501,10 @@ class Server:
                 params[key] = binary_value(params[key])
         if name in EXECUTION_METHODS:
             params.setdefault("timeout", 30)
-        target = partial(self._break_and_return, session) if name == "break_and_return" else getattr(session, name)
+        target = (
+            partial(self._break_and_return, session) if name == "break_and_return"
+            else getattr(session, name)
+        )
         inspect.signature(target).bind(**params)
         if name in {"interrupt", "status"}:
             response = await target(**params)
@@ -472,9 +516,13 @@ class Server:
         async with record.lock:
             return await target(**params)
 
-    async def _break_and_return(self, session, *, variables=(), expressions=(), depth=0, context=0, timeout=30):
+    async def _break_and_return(
+        self, session, *, variables=(), expressions=(), depth=0, context=0, timeout=30,
+    ):
         await session.run_until_break(timeout=timeout)
-        return await session.snapshot(variables, expressions=expressions, depth=depth, context=context)
+        return await session.snapshot(
+            variables, expressions=expressions, depth=depth, context=context,
+        )
 
     async def rpc(self, request):
         task = asyncio.current_task()
@@ -502,10 +550,16 @@ class Server:
         except asyncio.CancelledError:
             if self._closing:
                 raise
-            return _error_response(request_id, RemoteError(-32010, "Request cancelled", {"type": "RequestCancelled"}))
+            return _error_response(
+                request_id,
+                RemoteError(-32010, "Request cancelled", {"type": "RequestCancelled"}),
+            )
         except Exception as error:
-            if not isinstance(error, (RemoteError, ValueError, TypeError, TimeoutError,
-                                      SessionStateError, CommandError, PathMappingError, ProtocolError, ProxyError, ConnectionClosed, ExecutionFinished)):
+            if not isinstance(error, (
+                RemoteError, ValueError, TypeError, TimeoutError, SessionStateError,
+                CommandError, PathMappingError, ProtocolError, ProxyError,
+                ConnectionClosed, ExecutionFinished,
+            )):
                 LOGGER.exception("RPC failed")
                 error = RemoteError(-32603, "Internal server error", {"type": "InternalError"})
             return _error_response(request_id, error)
@@ -569,7 +623,9 @@ class _Handler(BaseHTTPRequestHandler):
     def _authorize(self):
         if self.pilot.token:
             actual = self.headers.get("Authorization", "")
-            if not hmac.compare_digest(actual.encode("utf-8"), ("Bearer " + self.pilot.token).encode("utf-8")):
+            if not hmac.compare_digest(
+                actual.encode("utf-8"), ("Bearer " + self.pilot.token).encode("utf-8"),
+            ):
                 self._send(401, _error_response(None, RemoteError(-32009, "Unauthorized")))
                 return False
         else:
@@ -581,7 +637,9 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(403, _error_response(None, RemoteError(-32009, "Invalid Host header")))
                 return False
         if self.headers.get("Origin"):
-            self._send(403, _error_response(None, RemoteError(-32009, "Browser-origin requests are not accepted")))
+            self._send(403, _error_response(
+                None, RemoteError(-32009, "Browser-origin requests are not accepted"),
+            ))
             return False
         return True
 
@@ -600,11 +658,15 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(404, _error_response(None, RemoteError(-32601, "Unknown endpoint")))
             return
         if self.headers.get_content_type() != "application/json":
-            self._send(415, _error_response(None, _invalid("Content-Type must be application/json")))
+            self._send(415, _error_response(
+                None, _invalid("Content-Type must be application/json"),
+            ))
             return
         lengths = self.headers.get_all("Content-Length", [])
         if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not lengths[0].isdigit():
-            self._send(400, _error_response(None, _invalid("One Content-Length and no Transfer-Encoding are required")))
+            self._send(400, _error_response(
+                None, _invalid("One Content-Length and no Transfer-Encoding are required"),
+            ))
             return
         length = int(lengths[0])
         if length > self.pilot.max_request_bytes:
@@ -616,7 +678,9 @@ class _Handler(BaseHTTPRequestHandler):
                 raise ValueError("Incomplete body")
             request = json.loads(body.decode("utf-8"), parse_constant=_invalid_constant)
         except (ValueError, OSError, RecursionError) as error:
-            self._send(400, _error_response(None, RemoteError(-32700, f"Invalid JSON request: {error}")))
+            self._send(400, _error_response(
+                None, RemoteError(-32700, f"Invalid JSON request: {error}"),
+            ))
             return
         self._dispatch(request)
 
@@ -635,7 +699,9 @@ class _Handler(BaseHTTPRequestHandler):
             except FutureTimeoutError:
                 try:
                     readable, _, _ = select.select([self.connection], [], [], 0)
-                    disconnected = bool(readable) and self.connection.recv(1, socket.MSG_PEEK) == b""
+                    disconnected = (
+                        bool(readable) and self.connection.recv(1, socket.MSG_PEEK) == b""
+                    )
                 except (OSError, ValueError):
                     disconnected = True
                 if disconnected:

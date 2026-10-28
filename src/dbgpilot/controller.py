@@ -30,13 +30,18 @@ class Controller:
     ):
         if max_packet_size < 1 or event_queue_size < 1:
             raise ValueError("Packet and event queue limits must be positive")
-        if any(type(value) is not int or value < 1 for value in (max_pending_commands, error_queue_size, max_sessions)):
+        if any(
+            type(value) is not int or value < 1
+            for value in (max_pending_commands, error_queue_size, max_sessions)
+        ):
             raise ValueError("Command, error queue and session limits must be positive integers")
         self.max_sessions = max_sessions
         self.host = host
         self.port = port
         self.features = dict(DEFAULT_FEATURES if features is None else features)
-        self.path_mapper = path_mappings if isinstance(path_mappings, PathMapper) else PathMapper(path_mappings)
+        self.path_mapper = (
+            path_mappings if isinstance(path_mappings, PathMapper) else PathMapper(path_mappings)
+        )
         self._options = dict(
             command_timeout=command_timeout, execution_timeout=execution_timeout,
             handshake_timeout=handshake_timeout, max_packet_size=max_packet_size,
@@ -121,7 +126,9 @@ class Controller:
             return
         if len(self._connections) + len(self.sessions) >= self.max_sessions:
             writer.close()
-            self._report_error(SessionStateError("Controller session limit reached; new connection rejected"))
+            self._report_error(SessionStateError(
+                "Controller session limit reached; new connection rejected",
+            ))
             return
         self._connections.add(writer)
         task = asyncio.create_task(self._accept(reader, writer), name="dbgpilot-handshake")
@@ -167,7 +174,9 @@ class Controller:
 
     async def next_error(self, *, timeout=None) -> Exception:
         """Retrieve a rejected connection's handshake/initialization error."""
-        return await wait_queue(self._errors, self._closed, timeout, ConnectionClosed("Controller closed"))
+        return await wait_queue(
+            self._errors, self._closed, timeout, ConnectionClosed("Controller closed"),
+        )
 
     async def aclose(self):
         if self._closed.is_set():
@@ -182,7 +191,9 @@ class Controller:
                     self._proxies.pop(key, None)
                 except Exception as error:
                     self._report_error(error)
-            await asyncio.gather(*(unregister(key, client) for key, (client, _) in tuple(self._proxies.items())))
+            await asyncio.gather(*(
+                unregister(key, client) for key, (client, _) in tuple(self._proxies.items())
+            ))
         await asyncio.gather(*(session.aclose() for session in self.sessions))
         for writer in tuple(self._connections):
             writer.close()

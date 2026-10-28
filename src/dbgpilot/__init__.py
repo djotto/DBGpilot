@@ -10,7 +10,8 @@ from .errors import (
 from .models import (
     Breakpoint, ClosedEvent, ExecutionResult, Feature, Frame, NotificationEvent,
     NotificationMessage, Property, PropertyValue, SessionInfo, Snapshot, Spawnpoint, StoppedEvent,
-    StreamEvent, TypeMapping, InteractiveResult, InteractiveEvent, ProxyErrorEvent, ProxyRegistration,
+    StreamEvent, TypeMapping, InteractiveResult, InteractiveEvent,
+    ProxyErrorEvent, ProxyRegistration,
 )
 from .session import Session
 from .client import Client, RemoteRequest, RemoteSession

@@ -18,7 +18,10 @@ def _text(path):
 
 def _local(path, base):
     text = _text(path)
-    windows = isinstance(path, PureWindowsPath) or bool(re.match(r"^[A-Za-z]:", text)) or text.startswith("\\\\")
+    windows = (
+        isinstance(path, PureWindowsPath) or bool(re.match(r"^[A-Za-z]:", text))
+        or text.startswith("\\\\")
+    )
     if windows:
         result = PureWindowsPath(ntpath.normpath(text))
         if not result.is_absolute():
@@ -48,10 +51,14 @@ def _remote(uri):
     if re.search(r"%(?![0-9a-fA-F]{2})", text):
         raise ValueError("File URI contains an invalid percent escape")
     parsed = urlsplit(text)
-    if (parsed.scheme != "file" or not parsed.path.startswith("/") or parsed.query or parsed.fragment
-            or parsed.username is not None or parsed.password is not None
-            or parsed.port is not None or parsed.netloc.endswith(":")):
-        raise ValueError("Remote roots and paths must be absolute file:// URIs without query/fragment/userinfo")
+    if (
+        parsed.scheme != "file" or not parsed.path.startswith("/") or parsed.query
+        or parsed.fragment or parsed.username is not None or parsed.password is not None
+        or parsed.port is not None or parsed.netloc.endswith(":")
+    ):
+        raise ValueError(
+            "Remote roots and paths must be absolute file:// URIs without query/fragment/userinfo",
+        )
     host = "" if parsed.netloc.casefold() == "localhost" else parsed.netloc.casefold()
     decoded = unquote(parsed.path, errors="surrogateescape")
     if "\0" in decoded:
@@ -102,13 +109,23 @@ class PathMapper:
                 try:
                     entry = PathMapping(**entry)
                 except TypeError as error:
-                    raise ValueError("Each mapping requires local and remote, and optionally remote_case_sensitive") from error
+                    raise ValueError(
+                        "Each mapping requires local and remote, "
+                        "and optionally remote_case_sensitive"
+                    ) from error
             if not isinstance(entry, PathMapping):
-                raise TypeError("Mappings must be PathMapping records or configuration dictionaries")
-            if entry.remote_case_sensitive is not None and not isinstance(entry.remote_case_sensitive, bool):
+                raise TypeError(
+                    "Mappings must be PathMapping records or configuration dictionaries",
+                )
+            if entry.remote_case_sensitive is not None and not isinstance(
+                entry.remote_case_sensitive, bool,
+            ):
                 raise ValueError("remote_case_sensitive must be a boolean")
             local, remote = _local(entry.local, self.base_dir), _remote(entry.remote)
-            case_sensitive = not remote.windows if entry.remote_case_sensitive is None else entry.remote_case_sensitive
+            case_sensitive = (
+                not remote.windows if entry.remote_case_sensitive is None
+                else entry.remote_case_sensitive
+            )
             mapping = PathMapping(str(local), remote.uri, entry.remote_case_sensitive)
             rule = _Rule(mapping, local, remote, case_sensitive)
             for other in rules:
@@ -116,8 +133,14 @@ class PathMapper:
                     raise ValueError(f"Duplicate local mapping root: {local}")
                 if remote.host == other.remote.host and remote.windows == other.remote.windows:
                     # Mixed case policies for overlapping roots are ambiguous.
-                    folded, other_folded = tuple(p.casefold() for p in remote.parts), tuple(p.casefold() for p in other.remote.parts)
-                    overlap = folded[:len(other_folded)] == other_folded or other_folded[:len(folded)] == folded
+                    folded, other_folded = (
+                        tuple(p.casefold() for p in remote.parts),
+                        tuple(p.casefold() for p in other.remote.parts),
+                    )
+                    overlap = (
+                        folded[:len(other_folded)] == other_folded
+                        or other_folded[:len(folded)] == folded
+                    )
                     if overlap and case_sensitive != other.case_sensitive:
                         raise ValueError("Overlapping remote roots must use the same case policy")
                     if rule.remote_key(remote.parts) == other.remote_key(other.remote.parts):
@@ -156,24 +179,37 @@ class PathMapper:
             if type(path) is type(rule.local) and path.is_relative_to(rule.local):
                 matches.append((len(rule.local.parts), rule, path.relative_to(rule.local).parts))
         if not matches:
-            raise PathMappingError(path, "to_remote", "no local root matches; use an explicit engine URI for remote files")
+            raise PathMappingError(
+                path, "to_remote",
+                "no local root matches; use an explicit engine URI for remote files",
+            )
         _, rule, suffix = max(matches, key=lambda item: item[0])
         if rule.remote.windows and any("\\" in part or ":" in part for part in suffix):
-            raise PathMappingError(path, "to_remote", "a path component cannot be represented on the remote Windows filesystem")
+            raise PathMappingError(
+                path, "to_remote",
+                "a path component cannot be represented on the remote Windows filesystem",
+            )
         return _Remote(rule.remote.host, rule.remote.parts + tuple(suffix), rule.remote.windows)
 
     def _inbound(self, path):
         matches = []
         for rule in self._rules:
             root = rule.remote
-            if (root.host == path.host and root.windows == path.windows
-                    and rule.remote_key(path.parts[:len(root.parts)]) == rule.remote_key(root.parts)):
+            if (
+                root.host == path.host and root.windows == path.windows
+                and rule.remote_key(path.parts[:len(root.parts)]) == rule.remote_key(root.parts)
+            ):
                 matches.append((len(root.parts), rule, path.parts[len(root.parts):]))
         if not matches:
             raise PathMappingError(path.uri, "to_local", "no remote root matches")
         _, rule, suffix = max(matches, key=lambda item: item[0])
-        if isinstance(rule.local, PureWindowsPath) and any("\\" in part or ":" in part for part in suffix):
-            raise PathMappingError(path.uri, "to_local", "a path component cannot be represented on the local Windows filesystem")
+        if isinstance(rule.local, PureWindowsPath) and any(
+            "\\" in part or ":" in part for part in suffix
+        ):
+            raise PathMappingError(
+                path.uri, "to_local",
+                "a path component cannot be represented on the local Windows filesystem",
+            )
         return rule.local.joinpath(*suffix)
 
     def to_remote(self, path):
@@ -185,7 +221,9 @@ class PathMapper:
             return local.as_uri()
         remote = self._outbound(local)
         if self._inbound(remote) != local:
-            raise PathMappingError(path, "to_remote", "overlapping mappings do not round-trip to the same local file")
+            raise PathMappingError(
+                path, "to_remote", "overlapping mappings do not round-trip to the same local file",
+            )
         return remote.uri
 
     def to_local(self, uri):
@@ -197,10 +235,20 @@ class PathMapper:
         forward = self._outbound(local)
         # URI drive letters are case-insensitive; the rule's full case policy
         # was already used while choosing the inbound mapping.
-        rule = max((rule for rule in self._rules if type(local) is type(rule.local) and local.is_relative_to(rule.local)),
-                   key=lambda item: len(item.local.parts))
-        if forward.host != remote.host or rule.remote_key(forward.parts) != rule.remote_key(remote.parts):
-            raise PathMappingError(uri, "to_local", "overlapping mappings do not round-trip to the same engine file")
+        rule = max(
+            (
+                rule for rule in self._rules
+                if type(local) is type(rule.local) and local.is_relative_to(rule.local)
+            ),
+            key=lambda item: len(item.local.parts),
+        )
+        if (
+            forward.host != remote.host
+            or rule.remote_key(forward.parts) != rule.remote_key(remote.parts)
+        ):
+            raise PathMappingError(
+                uri, "to_local", "overlapping mappings do not round-trip to the same engine file",
+            )
         return str(local)
 
     def location(self, uri):

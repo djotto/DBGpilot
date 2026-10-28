@@ -17,11 +17,16 @@ from ._version import __version__
 
 
 def _settings(args):
-    names = ("host", "port", "xdebug_host", "xdebug_port", "token") if args.command == "serve" else ("url", "token", "request_timeout")
+    names = (
+        ("host", "port", "xdebug_host", "xdebug_port", "token") if args.command == "serve"
+        else ("url", "token", "request_timeout")
+    )
     overrides = {name: getattr(args, name) for name in names if getattr(args, name) is not None}
     if "token" not in overrides and "DBGPILOT_TOKEN" in os.environ:
         overrides["token"] = os.environ["DBGPILOT_TOKEN"]
-    return load_config(False if args.no_config else args.config, discover=not args.no_config, **overrides)
+    return load_config(
+        False if args.no_config else args.config, discover=not args.no_config, **overrides,
+    )
 
 
 async def _serve(args):
@@ -64,7 +69,9 @@ async def _call(args):
         raise ValueError("--params must contain a JSON object")
     if args.session is not None:
         params["session_id"] = args.session
-    async with Client(settings.url, token=settings.token, timeout=settings.request_timeout) as client:
+    async with Client(
+        settings.url, token=settings.token, timeout=settings.request_timeout,
+    ) as client:
         result = await client.call(args.method, **params)
         print(json.dumps(result, ensure_ascii=True, allow_nan=False), flush=True)
 
@@ -85,14 +92,20 @@ def main(argv=None):
     serve.add_argument("--idekey")
     config = serve.add_mutually_exclusive_group()
     config.add_argument("--config", type=Path, help="Read project settings from this TOML file")
-    config.add_argument("--no-config", action="store_true", help="Disable project configuration discovery")
-    serve.add_argument("--path-map", nargs=2, action="append", default=[], metavar=("LOCAL", "REMOTE"),
-                       help="Map a local directory to an engine file URI; repeat for multiple roots")
+    config.add_argument(
+        "--no-config", action="store_true", help="Disable project configuration discovery",
+    )
+    serve.add_argument(
+        "--path-map", nargs=2, action="append", default=[], metavar=("LOCAL", "REMOTE"),
+        help="Map a local directory to an engine file URI; repeat for multiple roots",
+    )
     call = commands.add_parser("call", help="Send a JSON-RPC command and print its result")
     call.add_argument("method")
     call.add_argument("--url")
     call.add_argument("--token")
-    call.add_argument("--timeout", dest="request_timeout", type=float, help="HTTP transport timeout in seconds")
+    call.add_argument(
+        "--timeout", dest="request_timeout", type=float, help="HTTP transport timeout in seconds",
+    )
     call_config = call.add_mutually_exclusive_group()
     call_config.add_argument("--config", type=Path)
     call_config.add_argument("--no-config", action="store_true")
@@ -108,7 +121,10 @@ def main(argv=None):
         print(json.dumps({"error": json_value(error)}), file=sys.stderr)
         return 1
     except (OSError, ValueError, TimeoutError) as error:
-        print(json.dumps({"error": {"type": type(error).__name__, "message": str(error)}}), file=sys.stderr)
+        print(
+            json.dumps({"error": {"type": type(error).__name__, "message": str(error)}}),
+            file=sys.stderr,
+        )
         return 1
     except KeyboardInterrupt:
         return 130

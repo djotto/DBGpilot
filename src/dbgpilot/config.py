@@ -32,7 +32,10 @@ class SetupConfig:
             raise ValueError("startup.launch must be a boolean")
         for name in ("request_timeout", "startup_timeout"):
             value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or value <= 0:
+            if (
+                isinstance(value, bool) or not isinstance(value, (float, int))
+                or not math.isfinite(value) or value <= 0
+            ):
                 raise ValueError(f"{name} must be a finite positive number")
         for name in ("port", "xdebug_port"):
             value = getattr(self, name)
@@ -74,7 +77,9 @@ class SetupConfig:
                 raise ValueError("connection.token_env must name an environment variable")
             if "token" not in overrides:
                 if name not in os.environ:
-                    raise ValueError(f"Required authentication environment variable {name} is unset")
+                    raise ValueError(
+                        f"Required authentication environment variable {name} is unset",
+                    )
                 values["token"] = os.environ[name]
         for key in ("working_directory", "python"):
             if key in values:
@@ -98,4 +103,7 @@ def load_config(config=None, *, discover=False, **overrides):
         return SetupConfig(**overrides)
     if config is None and discover:
         config = PathMapper.find_config()
-    return SetupConfig.from_file(config, **overrides) if config is not None else SetupConfig(**overrides)
+    return (
+        SetupConfig.from_file(config, **overrides)
+        if config is not None else SetupConfig(**overrides)
+    )

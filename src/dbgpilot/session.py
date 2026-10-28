@@ -31,7 +31,9 @@ from .queues import RetainedQueue
 
 _DEFAULT = object()
 _EVALUATIONS = {"eval", "expr", "exec"}
-_CONTINUATIONS = {"run", "step_into", "step_over", "step_out", "stop", "detach", "break", "interact"} | _EVALUATIONS
+_CONTINUATIONS = {
+    "run", "step_into", "step_over", "step_out", "stop", "detach", "break", "interact",
+} | _EVALUATIONS
 _SPAWNPOINT_COMMANDS = {"spawnpoint_" + name for name in ("set", "get", "update", "remove", "list")}
 _STATES = {"starting", "running", "break", "stopping", "stopped", "interactive"}
 _COMMANDS = (
@@ -116,14 +118,18 @@ class Session:
         self._stdin_mode_transaction = 0
         self._interaction_modes = {}
         self.allow_detach_eof = allow_detach_eof
-        self.path_mapper = path_mappings if isinstance(path_mappings, PathMapper) else PathMapper(path_mappings)
+        self.path_mapper = (
+            path_mappings if isinstance(path_mappings, PathMapper) else PathMapper(path_mappings)
+        )
 
     @classmethod
     async def connect(cls, reader, writer, *, handshake_timeout=5.0, features=None, **options):
         session = cls(reader, writer, **options)
         try:
             async with asyncio.timeout(handshake_timeout):
-                init, xml_encoding = await read_packet(reader, session.max_packet_size, with_encoding=True)
+                init, xml_encoding = await read_packet(
+                    reader, session.max_packet_size, with_encoding=True,
+                )
             if local_name(init) == "proxyerror":
                 raise proxy_error(init)
             if local_name(init) != "init" or not init.get("language"):
@@ -132,8 +138,12 @@ class Session:
             if version not in {"1", "1.0"}:
                 raise ProtocolError(f"Unsupported DBGp protocol version: {version!r}")
             engine = init.find("{*}engine")
-            session._xdebug_bytes = engine is not None and (engine.text or "").casefold() == "xdebug"
-            if session._xdebug_bytes and xml_encoding in {"iso-8859-1", "iso8859-1", "latin1", "latin-1"}:
+            session._xdebug_bytes = (
+                engine is not None and (engine.text or "").casefold() == "xdebug"
+            )
+            if session._xdebug_bytes and xml_encoding in {
+                "iso-8859-1", "iso8859-1", "latin1", "latin-1",
+            }:
                 decode_xdebug_xml(init)
             session.info = session._located(SessionInfo(
                 uuid.uuid4().hex, init.get("appid", ""), init.get("idekey", ""),
@@ -153,9 +163,14 @@ class Session:
             )
             await session.refresh_capabilities()
             encoding = session._capabilities["encoding"]
-            xdebug_latin1 = (session._xdebug_bytes and
-                             encoding.value.casefold() in {"iso-8859-1", "iso8859-1", "latin1", "latin-1"})
-            if encoding.supported and encoding.value.casefold().replace("-", "") != "utf8" and not xdebug_latin1:
+            xdebug_latin1 = (
+                session._xdebug_bytes
+                and encoding.value.casefold() in {"iso-8859-1", "iso8859-1", "latin1", "latin-1"}
+            )
+            if (
+                encoding.supported and encoding.value.casefold().replace("-", "") != "utf8"
+                and not xdebug_latin1
+            ):
                 if not await session.feature_set("encoding", "UTF-8"):
                     raise ProtocolError("The engine must support UTF-8 session encoding")
             for name, value in (features or {}).items():
@@ -248,7 +263,9 @@ class Session:
     async def _read_loop(self):
         try:
             while True:
-                node = await read_packet(self._reader, self.max_packet_size, xdebug_bytes=self._xdebug_bytes)
+                node = await read_packet(
+                    self._reader, self.max_packet_size, xdebug_bytes=self._xdebug_bytes,
+                )
                 kind = local_name(node)
                 if kind == "stream":
                     self._emit(StreamEvent(node.get("type", "stdout"), content_bytes(node)))
@@ -337,8 +354,13 @@ class Session:
                 self._capabilities[name] = feature
                 if name == "supports_async":
                     self.supports_async = feature.enabled
-        if (not failed and command in {"run", "step_into", "step_over", "step_out", "stop", "detach", "interact"}
-                and node.get("status") not in _STATES - {"starting", "running"}):
+        if (
+            not failed
+            and command in {
+                "run", "step_into", "step_over", "step_out", "stop", "detach", "interact",
+            }
+            and node.get("status") not in _STATES - {"starting", "running"}
+        ):
             raise ProtocolError(f"{command} response requires a valid execution state")
         breakpoint_request = self._breakpoint_requests.pop(transaction, None)
         if breakpoint_request is not None and not failed:
@@ -415,7 +437,9 @@ class Session:
             waiting_input = (name == "stdin" and data is not None and self.stdin_redirected
                              and self.stdin_waiting and self.supports_command("stdin"))
             if not asynchronous and not waiting_input:
-                raise SessionStateError("The engine cannot accept this command while PHP is running")
+                raise SessionStateError(
+                    "The engine cannot accept this command while PHP is running",
+                )
         if timeout is _DEFAULT:
             timeout = self.command_timeout
         transaction = None
@@ -426,7 +450,10 @@ class Session:
                     if self.closed:
                         raise self._error
                     if len(self._pending) + len(self._abandoned) >= self.max_pending_commands:
-                        raise SessionStateError("Outstanding DBGp command limit reached; await replies or explicitly close the session")
+                        raise SessionStateError(
+                            "Outstanding DBGp command limit reached; "
+                            "await replies or explicitly close the session"
+                        )
                     self._transaction += 1
                     transaction = self._transaction
                     packet = encode_command(name, transaction, arguments, data)
@@ -442,7 +469,10 @@ class Session:
                         self._spawnpoint_requests[transaction] = dict(arguments or {})
                     if name in {"feature_get", "feature_set"}:
                         self._feature_requests[transaction] = dict(arguments or {})
-                    if name in {"breakpoint_set", "breakpoint_get", "breakpoint_list", "breakpoint_update", "breakpoint_remove"}:
+                    if name in {
+                        "breakpoint_set", "breakpoint_get", "breakpoint_list",
+                        "breakpoint_update", "breakpoint_remove",
+                    }:
                         self._breakpoint_requests[transaction] = (dict(arguments or {}), data)
                     try:
                         self._writer.write(packet)
@@ -469,7 +499,9 @@ class Session:
     async def feature_set(self, name, value) -> bool:
         if name == "encoding":
             normalized = str(value).casefold().replace("-", "")
-            if normalized != "utf8" and not (self._xdebug_bytes and normalized in {"iso88591", "latin1"}):
+            if normalized != "utf8" and not (
+                self._xdebug_bytes and normalized in {"iso88591", "latin1"}
+            ):
                 raise ValueError("DBGpilot requires UTF-8 or Xdebug's Latin-1 byte framing")
         if name == "data_encoding" and value != "base64":
             raise ValueError("DBGpilot requires base64 command data")
@@ -538,14 +570,21 @@ class Session:
         if self.closed:
             raise self._error
         postmortem = self._capabilities.get("supports_postmortem", Feature(False, "")).enabled
-        if self._execution_pending or (self.state not in {"break", "interactive"} and not (self.state == "stopping" and postmortem)):
-            raise SessionStateError(f"Inspection requires a breakpoint, current state is {self.state}")
+        if self._execution_pending or (
+            self.state not in {"break", "interactive"}
+            and not (self.state == "stopping" and postmortem)
+        ):
+            raise SessionStateError(
+                f"Inspection requires a breakpoint, current state is {self.state}",
+            )
 
     async def _continue(self, name, *, timeout=_DEFAULT):
         node = await self._execute(name, timeout=timeout)
         return self._located(execution_result(node))
 
-    async def _execute(self, name, arguments=None, data=None, *, timeout=_DEFAULT, _interaction_mode=None):
+    async def _execute(
+        self, name, arguments=None, data=None, *, timeout=_DEFAULT, _interaction_mode=None,
+    ):
         if self.closed:
             raise self._error
         allowed = ({"break", "interactive", "stopping"} if name in _EVALUATIONS else
@@ -605,7 +644,10 @@ class Session:
         if data is not None and not isinstance(data, (str, bytes)):
             raise TypeError("stdin data must be text or bytes")
         await self._require_command("stdin")
-        async with asyncio.timeout(self.command_timeout if timeout is _DEFAULT else timeout), self._stdin_lock:
+        async with (
+            asyncio.timeout(self.command_timeout if timeout is _DEFAULT else timeout),
+            self._stdin_lock,
+        ):
             if data is not None and not self.stdin_redirected:
                 raise SessionStateError("Enable stdin redirection before sending input")
             node = await self.command("stdin", {"c": mode}, data, timeout=timeout, _stdin_mode=mode)
@@ -630,7 +672,9 @@ class Session:
         if self._execution_pending or self.state not in {"break", "interactive"}:
             raise SessionStateError(f"Cannot interact in state {self.state}")
         await self._require_command("interact")
-        node = await self._execute("interact", {"m": mode}, code, timeout=timeout, _interaction_mode=mode)
+        node = await self._execute(
+            "interact", {"m": mode}, code, timeout=timeout, _interaction_mode=mode,
+        )
         return parse_interaction(node)
 
     async def detach(self):
@@ -638,7 +682,9 @@ class Session:
             raise SessionStateError("Cannot detach while execution is outstanding")
         await self._require_command("detach")
         try:
-            return self._located(execution_result(await self.command("detach", _allow_eof=self.allow_detach_eof)))
+            return self._located(execution_result(
+                await self.command("detach", _allow_eof=self.allow_detach_eof),
+            ))
         finally:
             await self.aclose(detach=False)
 
@@ -669,7 +715,9 @@ class Session:
         node = await self.command("context_get", {"c": context, "d": depth})
         return tuple(parse_property(child, self._type_map) for child in node.findall("{*}property"))
 
-    async def property_get(self, name, *, context=0, depth=0, page=0, max_data=None, key=None, address=None):
+    async def property_get(
+        self, name, *, context=0, depth=0, page=0, max_data=None, key=None, address=None,
+    ):
         self._require_paused()
         node = await self.command("property_get", {
             "n": name, "c": context, "d": depth, "p": page, "m": max_data, "k": key, "a": address,
@@ -679,7 +727,9 @@ class Session:
             raise ProtocolError("property_get returned no property")
         return parse_property(prop, self._type_map)
 
-    async def property_children(self, name, *, context=0, depth=0, max_pages=1024, key=None, address=None):
+    async def property_children(
+        self, name, *, context=0, depth=0, max_pages=1024, key=None, address=None,
+    ):
         """Fetch all direct children. Nested children remain explicit properties."""
         children = []
         for page in range(max_pages):
@@ -712,7 +762,9 @@ class Session:
         data = content_bytes(node)
         try:
             size = int(node.get("size", len(data)))
-            result_page = int(node.get("page", page)) if node.get("page", page) is not None else None
+            result_page = (
+                int(node.get("page", page)) if node.get("page", page) is not None else None
+            )
             if size < 0 or (result_page is not None and result_page < 0):
                 raise ValueError
         except ValueError as error:
@@ -725,7 +777,10 @@ class Session:
         """Assign an engine-native payload; Xdebug evaluates it as PHP code."""
         self._require_paused()
         if not isinstance(expression, (str, bytes)):
-            raise TypeError("property_set expects an engine-native string or bytes; use set_value for Python values")
+            raise TypeError(
+                "property_set expects an engine-native string or bytes; "
+                "use set_value for Python values"
+            )
         raw = expression.encode("utf-8") if isinstance(expression, str) else expression
         node = await self.command("property_set", {
             "n": name, "c": context, "d": depth, "t": type, "l": len(raw), "a": address,
@@ -735,7 +790,9 @@ class Session:
     async def set_value(self, name, value, *, context=0, depth=0, address=None) -> bool:
         """Assign a Python scalar, safely representing strings and binary data in PHP."""
         if self.info.language.casefold() != "php":
-            raise SessionStateError("set_value represents PHP scalars; use property_set for this engine")
+            raise SessionStateError(
+                "set_value represents PHP scalars; use property_set for this engine",
+            )
         if isinstance(value, (str, bytes)):
             raw = value.encode("utf-8", "surrogateescape") if isinstance(value, str) else value
             expression = "base64_decode('" + base64.b64encode(raw).decode("ascii") + "')"
@@ -747,11 +804,15 @@ class Session:
             expression = str(value)
         elif isinstance(value, float):
             if not math.isfinite(value):
-                raise ValueError("Use property_set with an explicit PHP expression for non-finite values")
+                raise ValueError(
+                    "Use property_set with an explicit PHP expression for non-finite values",
+                )
             expression = repr(value)
         else:
             raise TypeError("set_value accepts strings, bytes, numbers, booleans, or None")
-        return await self.property_set(name, expression, context=context, depth=depth, address=address)
+        return await self.property_set(
+            name, expression, context=context, depth=depth, address=address,
+        )
 
     async def evaluate(self, expression: str, *, depth=0, page=0, timeout=_DEFAULT):
         """Evaluate PHP code; unlike property reads, this can have side effects."""
@@ -759,7 +820,9 @@ class Session:
         if depth < 0:
             raise ValueError("Stack depth cannot be negative")
         if depth != 0 and not self.supports_eval_depth:
-            raise ValueError("Xdebug evaluates in the current frame; use property_get/context for other frames")
+            raise ValueError(
+                "Xdebug evaluates in the current frame; use property_get/context for other frames",
+            )
         await self._require_command("eval")
         node = await self._execute("eval", {"d": depth, "p": page}, expression, timeout=timeout)
         prop = node.find("{*}property")
@@ -796,7 +859,8 @@ class Session:
         if self.state == "stopping":
             self._require_paused()
         node = await self.command("source", {
-            "f": self.path_mapper.to_remote(file) if file is not None else None, "b": begin, "e": end,
+            "f": self.path_mapper.to_remote(file) if file is not None else None,
+            "b": begin, "e": end,
         })
         if node.get("success") == "0":
             raise ProtocolError("Engine could not retrieve source")
@@ -820,7 +884,9 @@ class Session:
         if kind == "line" and (file is None or line is None or line < 1):
             raise ValueError("Line breakpoints need a file and positive line number")
         if kind == "conditional" and (file is None or (line is not None and line < 1)):
-            raise ValueError("Conditional breakpoints need a file and an optional positive line number")
+            raise ValueError(
+                "Conditional breakpoints need a file and an optional positive line number",
+            )
         if kind in {"conditional", "watch"} and condition is None:
             raise ValueError("This breakpoint requires a condition")
         if kind in {"call", "return"} and not function:
@@ -832,7 +898,9 @@ class Session:
         types = self._capabilities.get("breakpoint_types")
         if types is not None and types.supported and kind not in types.value.split():
             raise SessionStateError(f"The engine does not advertise {kind} breakpoints")
-        if hit_condition not in {None, ">=", "==", "%"} or (hit_value is not None and hit_value < 0):
+        if hit_condition not in {None, ">=", "==", "%"} or (
+            hit_value is not None and hit_value < 0
+        ):
             raise ValueError("Invalid breakpoint hit condition")
         uri = self.path_mapper.to_remote(file) if file is not None else None
         node = await self.command("breakpoint_set", {
@@ -868,7 +936,9 @@ class Session:
                 raise ProtocolError("breakpoint_get returned a different ID")
             self._breakpoints[id] = point
         elif command == "breakpoint_list":
-            points = tuple(self._located(parse_breakpoint(child)) for child in node.findall("{*}breakpoint"))
+            points = tuple(
+                self._located(parse_breakpoint(child)) for child in node.findall("{*}breakpoint")
+            )
             if len({point.id for point in points}) != len(points):
                 raise ProtocolError("breakpoint_list returned duplicate IDs")
             self._breakpoints.clear()
@@ -891,15 +961,21 @@ class Session:
 
     async def breakpoints(self) -> tuple[Breakpoint, ...]:
         node = await self.command("breakpoint_list")
-        results = tuple(self._located(parse_breakpoint(child)) for child in node.findall("{*}breakpoint"))
+        results = tuple(
+            self._located(parse_breakpoint(child)) for child in node.findall("{*}breakpoint")
+        )
         return results
 
-    async def update_breakpoint(self, id, *, state=None, line=None, hit_value=None, hit_condition=None):
+    async def update_breakpoint(
+        self, id, *, state=None, line=None, hit_value=None, hit_condition=None,
+    ):
         if state not in {None, "enabled", "disabled"}:
             raise ValueError("Invalid breakpoint state")
         if line is not None and line < 1:
             raise ValueError("Line numbers must be positive")
-        if hit_condition not in {None, ">=", "==", "%"} or (hit_value is not None and hit_value < 0):
+        if hit_condition not in {None, ">=", "==", "%"} or (
+            hit_value is not None and hit_value < 0
+        ):
             raise ValueError("Invalid breakpoint hit condition")
         await self.command("breakpoint_update", {
             "d": id, "s": state, "n": line, "h": hit_value, "o": hit_condition,
@@ -933,7 +1009,9 @@ class Session:
                 raise ProtocolError("spawnpoint_get returned a different ID")
             self._spawnpoints[point.id] = point
         elif command == "spawnpoint_list":
-            points = tuple(self._located(parse_spawnpoint(child)) for child in node.findall("{*}spawnpoint"))
+            points = tuple(
+                self._located(parse_spawnpoint(child)) for child in node.findall("{*}spawnpoint")
+            )
             if len({point.id for point in points}) != len(points):
                 raise ProtocolError("spawnpoint_list returned duplicate IDs")
             self._spawnpoints.clear()
@@ -971,7 +1049,9 @@ class Session:
     async def spawnpoints(self) -> tuple[Spawnpoint, ...]:
         await self._require_command("spawnpoint_list")
         node = await self.command("spawnpoint_list")
-        return tuple(self._located(parse_spawnpoint(child)) for child in node.findall("{*}spawnpoint"))
+        return tuple(
+            self._located(parse_spawnpoint(child)) for child in node.findall("{*}spawnpoint")
+        )
 
     async def update_spawnpoint(self, id: str, *, state=None, line=None):
         if id is None:
@@ -989,7 +1069,9 @@ class Session:
         await self._require_command("spawnpoint_remove")
         await self.command("spawnpoint_remove", {"d": id})
 
-    async def snapshot(self, variables: Iterable[str] = (), *, expressions: Iterable[str] = (), depth=0, context=0):
+    async def snapshot(
+        self, variables: Iterable[str] = (), *, expressions: Iterable[str] = (), depth=0, context=0,
+    ):
         self._require_paused()
         frames = await self.stack()
         properties = {}

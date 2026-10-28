@@ -48,7 +48,9 @@ class DebuggerSetup:
 
     def _check_process(self):
         if self._process is not None and self._process.poll() is not None:
-            raise SetupError(f"Owned DBGpilot process {self.pid} exited (code {self._process.returncode})")
+            raise SetupError(
+                f"Owned DBGpilot process {self.pid} exited (code {self._process.returncode})",
+            )
 
     async def __aenter__(self):
         return await self.start()
@@ -68,7 +70,9 @@ class DebuggerSetup:
                     if self.config.launch:
                         self._launch()
                         self.ready = await self._read_ready()
-                    self.client = Client(self.url, token=self.config.token, timeout=self.config.request_timeout)
+                    self.client = Client(
+                        self.url, token=self.config.token, timeout=self.config.request_timeout,
+                    )
                     health = await self.client.health()
                     self._validate_health(health)
                     self._check_process()
@@ -89,15 +93,26 @@ class DebuggerSetup:
                 if isinstance(error, SetupError):
                     raise
                 if isinstance(error, RemoteError):
-                    detail = "Authentication failed; check the configured bearer token" if error.code == -32009 else "Server rejected the readiness request"
+                    detail = (
+                        "Authentication failed; check the configured bearer token"
+                        if error.code == -32009 else "Server rejected the readiness request"
+                    )
                 elif isinstance(error, TimeoutError):
                     detail = "Startup/readiness deadline expired"
                 elif isinstance(error, OSError) and self.config.launch and self._process is None:
-                    detail = "Cannot launch DBGpilot; check the Python executable and working directory"
+                    detail = (
+                        "Cannot launch DBGpilot; check the Python executable and working directory"
+                    )
                 elif exited:
-                    detail = f"Owned DBGpilot process exited during startup (code {self._process.returncode})"
+                    detail = (
+                        "Owned DBGpilot process exited during startup "
+                        f"(code {self._process.returncode})"
+                    )
                 else:
-                    detail = "Cannot reach a compatible DBGpilot API; check the endpoint, server and authentication"
+                    detail = (
+                        "Cannot reach a compatible DBGpilot API; "
+                        "check the endpoint, server and authentication"
+                    )
                 raise SetupError(detail) from None
 
     def _launch(self):
@@ -143,9 +158,11 @@ class DebuggerSetup:
                     ready = json.loads(line)
                 except (ValueError, UnicodeError):
                     raise SetupError("Owned process emitted invalid readiness output") from None
-                if (not isinstance(ready, dict) or ready.get("event") != "ready"
-                        or type(ready.get("pid")) is not int or ready.get("pid") != self.pid
-                        or not isinstance(ready.get("instance_id"), str) or not ready["instance_id"]):
+                if (
+                    not isinstance(ready, dict) or ready.get("event") != "ready"
+                    or type(ready.get("pid")) is not int or ready.get("pid") != self.pid
+                    or not isinstance(ready.get("instance_id"), str) or not ready["instance_id"]
+                ):
                     raise SetupError("Owned process readiness identity did not match")
                 if (not isinstance(ready.get("url"), str) or ready.get("protocol") != "dbgpilot/1"
                         or ready.get("status") != "ok"):
@@ -156,12 +173,22 @@ class DebuggerSetup:
                 # Report CLI failure categories without echoing paths/tokens or
                 # arbitrary child output into routine diagnostics.
                 error = self._errors.read(65536).decode("utf-8", "replace")
-                reason = "listener port is occupied" if "address already in use" in error.casefold() else "check the Python executable, installation, working directory and listener settings"
-                raise SetupError(f"Owned DBGpilot process exited before readiness (code {self._process.returncode}); {reason}")
+                reason = (
+                    "listener port is occupied" if "address already in use" in error.casefold()
+                    else "check the Python executable, installation, "
+                    "working directory and listener settings"
+                )
+                raise SetupError(
+                    "Owned DBGpilot process exited before readiness "
+                    f"(code {self._process.returncode}); {reason}"
+                )
             await asyncio.sleep(0.02)
 
     def _validate_health(self, health):
-        if not isinstance(health, dict) or health.get("status") != "ok" or health.get("protocol") != "dbgpilot/1" or not isinstance(health.get("url"), str):
+        if (
+            not isinstance(health, dict) or health.get("status") != "ok"
+            or health.get("protocol") != "dbgpilot/1" or not isinstance(health.get("url"), str)
+        ):
             raise SetupError("Incompatible DBGpilot API; expected protocol dbgpilot/1")
         if self._process is not None and health.get("instance_id") != self.ready.get("instance_id"):
             raise SetupError("Endpoint belongs to a different server process")

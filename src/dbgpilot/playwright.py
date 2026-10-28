@@ -55,10 +55,14 @@ class PausedBrowser:
 
     async def close(self):
         if asyncio.current_task() is self.action:
-            raise SessionStateError("Close the capture from its owning task, outside its browser action")
+            raise SessionStateError(
+                "Close the capture from its owning task, outside its browser action",
+            )
         if self._close_task is None:
             self._close_task = asyncio.create_task(self._close())
-            self._close_task.add_done_callback(lambda task: None if task.cancelled() else task.exception())
+            self._close_task.add_done_callback(
+                lambda task: None if task.cancelled() else task.exception(),
+            )
         await asyncio.shield(self._close_task)
 
     async def _close(self):
@@ -125,7 +129,9 @@ class PlaywrightDebugger:
                      if not (key in {"XDEBUG_SESSION", "XDEBUG_TRIGGER"} and value == idekey)]
             clean = urlunsplit(current._replace(query=urlencode(query)))
             if clean != self.page.url:
-                await self.page.evaluate("url => history.replaceState(history.state, '', url)", clean)
+                await self.page.evaluate(
+                    "url => history.replaceState(history.state, '', url)", clean,
+                )
             return response
 
         return await self._capture(
@@ -161,7 +167,10 @@ class PlaywrightDebugger:
                        expressions=(), timeout=30):
         if self._closed:
             raise ConnectionClosed("Playwright debugger closed")
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or not 0 < timeout <= 300:
+        if (
+            isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout) or not 0 < timeout <= 300
+        ):
             raise ValueError("timeout must be greater than zero and at most 300 seconds")
         specs = tuple(breakpoints)
         if any(not isinstance(spec, BreakpointSpec) for spec in specs):
@@ -181,7 +190,9 @@ class PlaywrightDebugger:
             async with asyncio.timeout(timeout):
                 route_installed = True
                 await self.page.route(url_pattern, route_request, times=1)
-                waiter = asyncio.create_task(self.client.wait_for_session(idekey=idekey, timeout=timeout))
+                waiter = asyncio.create_task(
+                    self.client.wait_for_session(idekey=idekey, timeout=timeout),
+                )
                 browser = asyncio.create_task(perform())
                 self._actions.add(browser)
                 browser.add_done_callback(self._actions.discard)
@@ -189,7 +200,8 @@ class PlaywrightDebugger:
                 for spec in specs:
                     await session.call("set_breakpoint", **spec.parameters())
                 snapshot = await self._race(
-                    session.break_and_return(variables, expressions=expressions, timeout=timeout), browser,
+                    session.break_and_return(variables, expressions=expressions, timeout=timeout),
+                    browser,
                 )
                 async with asyncio.timeout(4):
                     await self.page.unroute(url_pattern, route_request)
@@ -201,13 +213,18 @@ class PlaywrightDebugger:
             failure = error
             if isinstance(error, TimeoutError):
                 error.add_note(
-                    "Breakpoint capture deadline expired. Check that the page route matches the PHP request, "
-                    "Xdebug connects to the server's debugger listener, and XDEBUG_TRIGGER/XDEBUG_SESSION "
-                    "values are allowed. Verify breakpoint source paths against the server's path mappings. "
-                    "Browser action deadlines are separate; keep the page and event loop alive during a pause."
+                    "Breakpoint capture deadline expired. Check that the page route matches "
+                    "the PHP request, Xdebug connects to the server's debugger listener, "
+                    "and XDEBUG_TRIGGER/XDEBUG_SESSION values are allowed. Verify "
+                    "breakpoint source paths against the server's path mappings. "
+                    "Browser action deadlines are separate; keep the page and event loop "
+                    "alive during a pause."
                 )
             elif isinstance(error, RemoteError):
-                error.add_note("Check server path mappings and the engine URI/line for each breakpoint; use Client.to_remote() to verify a local source path.")
+                error.add_note(
+                    "Check server path mappings and the engine URI/line for each breakpoint; "
+                    "use Client.to_remote() to verify a local source path."
+                )
             if waiter is not None and not waiter.done():
                 waiter.cancel()
             if waiter is not None:
@@ -258,7 +275,10 @@ class PlaywrightDebugger:
 
     async def _close_session(self, session_id):
         # Cleanup still works if the capture's original Client has closed.
-        async with asyncio.timeout(4), Client(self.client.url, token=self.client.token, timeout=3) as cleanup:
+        async with (
+            asyncio.timeout(4),
+            Client(self.client.url, token=self.client.token, timeout=3) as cleanup,
+        ):
             try:
                 await cleanup.session(session_id).close()
             except RemoteError as error:
@@ -267,11 +287,15 @@ class PlaywrightDebugger:
 
     async def aclose(self):
         if asyncio.current_task() in self._actions:
-            raise SessionStateError("Close the debugger from its owning task, outside the browser action")
+            raise SessionStateError(
+                "Close the debugger from its owning task, outside the browser action",
+            )
         if self._close_task is None:
             self._closed = True
             self._close_task = asyncio.create_task(self._close_all())
-            self._close_task.add_done_callback(lambda task: None if task.cancelled() else task.exception())
+            self._close_task.add_done_callback(
+                lambda task: None if task.cancelled() else task.exception(),
+            )
         await asyncio.shield(self._close_task)
 
     async def _close_all(self):
@@ -279,7 +303,9 @@ class PlaywrightDebugger:
         for operation in operations:
             operation.cancel()
         await asyncio.gather(*operations, return_exceptions=True)
-        results = await asyncio.gather(*(capture.close() for capture in tuple(self._captures)), return_exceptions=True)
+        results = await asyncio.gather(
+            *(capture.close() for capture in tuple(self._captures)), return_exceptions=True,
+        )
         errors = [error for error in results if isinstance(error, Exception)]
         if errors:
             raise ExceptionGroup("Playwright capture cleanup failed", errors)

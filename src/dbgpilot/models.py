@@ -57,7 +57,10 @@ class Property:
 
     @property
     def value_truncated(self) -> bool:
-        return self.raw_value is not None and self.size is not None and self.size > len(self.raw_value)
+        return (
+            self.raw_value is not None and self.size is not None
+            and self.size > len(self.raw_value)
+        )
 
     @property
     def children_truncated(self) -> bool:
@@ -201,7 +204,10 @@ def parse_frame(node: ET.Element) -> Frame:
     return Frame(
         level, node.get("filename", ""), line, node.get("where", ""),
         node.get("type", "file"), node.get("cmdbegin"), node.get("cmdend"),
-        tuple(parse_frame(child) for child in node if child.tag.rsplit("}", 1)[-1] in {"input", "stack"}),
+        tuple(
+            parse_frame(child) for child in node
+            if child.tag.rsplit("}", 1)[-1] in {"input", "stack"}
+        ),
     )
 
 

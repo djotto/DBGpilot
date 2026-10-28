@@ -39,7 +39,9 @@ class Client:
         self.max_response_bytes = max_response_bytes
         self._closed = False
         self._inflight = {}
-        if token is not None and (not isinstance(token, str) or not token.isascii() or "\r" in token or "\n" in token):
+        if token is not None and (
+            not isinstance(token, str) or not token.isascii() or "\r" in token or "\n" in token
+        ):
             raise ValueError("Bearer tokens must be ASCII without newlines")
 
     async def __aenter__(self):
@@ -52,8 +54,10 @@ class Client:
 
     async def aclose(self):
         self._closed = True
-        await asyncio.gather(*(self._cancel_remote(id) for id, method in tuple(self._inflight.items())
-                               if method != "cancel_request"))
+        await asyncio.gather(*(
+            self._cancel_remote(id) for id, method in tuple(self._inflight.items())
+            if method != "cancel_request"
+        ))
 
     async def call(self, method, **params):
         return await self._call(uuid.uuid4().hex, method, params)
@@ -109,7 +113,8 @@ class Client:
     async def _request(self, request_id, body, timeout):
         authority = f"[{self.host}]" if ":" in self.host else self.host
         headers = (f"POST /rpc HTTP/1.1\r\nHost: {authority}:{self.port}\r\n"
-                   f"Content-Type: application/json\r\nContent-Length: {len(body)}\r\nConnection: close\r\n")
+                   f"Content-Type: application/json\r\nContent-Length: {len(body)}\r\n"
+                   "Connection: close\r\n")
         if self.token is not None:
             headers += f"Authorization: Bearer {self.token}\r\n"
         async with asyncio.timeout(timeout):
@@ -144,13 +149,18 @@ class Client:
                     raise ProtocolError("Server response does not match this request")
                 if "error" in result:
                     error = result["error"]
-                    if not isinstance(error, dict) or not isinstance(error.get("code"), int) or not isinstance(error.get("message"), str):
+                    if (
+                        not isinstance(error, dict) or not isinstance(error.get("code"), int)
+                        or not isinstance(error.get("message"), str)
+                    ):
                         raise ProtocolError("Server returned an invalid error")
                     raise RemoteError(error["code"], error["message"], error.get("data"))
                 if status != 200 or result.get("id") != request_id or "result" not in result:
                     raise ProtocolError("Server response does not match this request")
                 return result["result"]
-            except (ValueError, UnicodeError, asyncio.IncompleteReadError, asyncio.LimitOverrunError) as error:
+            except (
+                ValueError, UnicodeError, asyncio.IncompleteReadError, asyncio.LimitOverrunError,
+            ) as error:
                 raise ProtocolError("Invalid HTTP/JSON response") from error
             finally:
                 writer.close()
@@ -178,16 +188,22 @@ class Client:
 
     async def register_proxy(self, host="127.0.0.1", port=9001, *, idekey,
                              listen_port=None, multiple_sessions=True, timeout=5):
-        return await self.call("proxy.register", host=host, port=port, idekey=idekey,
-                               listen_port=listen_port, multiple_sessions=multiple_sessions, timeout=timeout)
+        return await self.call(
+            "proxy.register", host=host, port=port, idekey=idekey,
+            listen_port=listen_port, multiple_sessions=multiple_sessions, timeout=timeout,
+        )
 
     async def unregister_proxy(self, host="127.0.0.1", port=9001, *, idekey, timeout=5):
-        return await self.call("proxy.unregister", host=host, port=port, idekey=idekey, timeout=timeout)
+        return await self.call(
+            "proxy.unregister", host=host, port=port, idekey=idekey, timeout=timeout,
+        )
 
     async def proxy_registrations(self):
         return await self.call("proxy.registrations")
 
-    async def wait_for_session(self, *, idekey=None, cookie=None, appid=None, file=None, timeout=30):
+    async def wait_for_session(
+        self, *, idekey=None, cookie=None, appid=None, file=None, timeout=30,
+    ):
         result = await self.call("wait_for_session", idekey=idekey, cookie=cookie,
                                  appid=appid, file=file, timeout=timeout)
         return RemoteSession(self, result["session_id"], result)
@@ -251,10 +267,14 @@ class RemoteSession:
         return await self.call("snapshot", variables=list(variables), expressions=list(expressions),
                                depth=depth, context=context)
 
-    async def break_and_return(self, variables=(), *, expressions=(), depth=0, context=0, timeout=30):
+    async def break_and_return(
+        self, variables=(), *, expressions=(), depth=0, context=0, timeout=30,
+    ):
         """Run to a breakpoint, return a snapshot, and leave PHP paused."""
-        return await self.call("break_and_return", variables=list(variables), expressions=list(expressions),
-                               depth=depth, context=context, timeout=timeout)
+        return await self.call(
+            "break_and_return", variables=list(variables), expressions=list(expressions),
+            depth=depth, context=context, timeout=timeout,
+        )
 
     async def run(self, *, timeout=30):
         return await self.call("run", timeout=timeout)
@@ -275,10 +295,14 @@ class RemoteSession:
         return await self.call("step_out", timeout=timeout)
 
     async def evaluate(self, expression, *, depth=0, page=0, timeout=30):
-        return await self.call("evaluate", expression=expression, depth=depth, page=page, timeout=timeout)
+        return await self.call(
+            "evaluate", expression=expression, depth=depth, page=page, timeout=timeout,
+        )
 
     async def expr(self, expression, *, depth=0, page=0, timeout=30):
-        return await self.call("expr", expression=expression, depth=depth, page=page, timeout=timeout)
+        return await self.call(
+            "expr", expression=expression, depth=depth, page=page, timeout=timeout,
+        )
 
     async def exec(self, code, *, timeout=30):
         return await self.call("exec", code=code, timeout=timeout)

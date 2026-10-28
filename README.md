@@ -171,8 +171,8 @@ poetry run pytest -m "not integration"
 poetry build
 ```
 
-The development dependencies are pytest, pytest-asyncio, Hypothesis, and
-Playwright. Browser installation is separate (`ddev test-setup`).
+The development dependencies are pytest, pytest-asyncio, Hypothesis, Playwright,
+and pylint. Browser installation is separate (`ddev test-setup`).
 
 ## DDEV integration harness
 

@@ -611,6 +611,8 @@ class Server:
 
 
 class _Handler(BaseHTTPRequestHandler):
+    # Bound by the per-server Handler subclass before requests are handled.
+    pilot: Server
     protocol_version = "HTTP/1.1"
 
     def setup(self):

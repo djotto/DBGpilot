@@ -1,5 +1,8 @@
 # Python setup and optional pytest fixtures
 
+For an existing project, the [consumer quickstart](consumer-quickstart.md) has
+a minimal copyable pytest example and artifact-install instructions.
+
 `DebuggerSetup` connects ordinary async Python scripts to the persistent
 DBGpilot API. It can explicitly launch `python -m dbgpilot serve`, using the
 configured interpreter. It requires Python 3.12 or 3.13 and only the standard

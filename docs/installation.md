@@ -5,6 +5,9 @@ or source archive; no public package-index destination has been selected. The
 core supports async Python 3.12 and 3.13 and has no third-party runtime
 dependencies. PHP/Xdebug and browser tools are installed separately.
 
+For a copyable example in another project's test suite, use the
+[pytest / Playwright consumer quickstart](consumer-quickstart.md).
+
 ## Install an artifact
 
 Create an environment using either supported Python version:

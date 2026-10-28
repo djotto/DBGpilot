@@ -262,13 +262,15 @@ def validate(args):
             (output / "SHA256SUMS").write_text("".join(f"{info['sha256']}  {name}\n" for name, info in sorted(report["artifacts"].items())))
         report["status"] = "validated-unpublished-candidate"
         checklist = ["# Release candidate checklist", "", f"Version: {version}. Status: unpublished.", "",
+                     "Full-suite tests and CI are optional for a manual artifact handoff.",
+                     "Consumer quickstart: docs/consumer-quickstart.md in the source archive.", "",
                      "- [x] Metadata, public imports, versions, license and typing marker checked.",
                      "- [x] Two isolated builds produced identical wheel and source artifacts.",
                      "- [x] Wheel and source installed in separate bare environments; HTTP/TCP reconnect probes passed.",
-                     f"- [{'x' if args.live_php else ' '}] Real PHP first-breakpoint onboarding passed for both installs.",
-                     f"- [{'x' if args.live_browser else ' '}] Installed standalone and pytest Chromium examples passed.",
-                     f"- [{'x' if args.suite_junit else ' '}] Passing full-suite evidence supplied and copied.",
-                     "- [ ] Choose and configure CI runners/triggers/required checks.",
+                     f"- [{'x' if args.live_php else ' '}] Optional: real PHP first-breakpoint onboarding passed for both installs.",
+                     f"- [{'x' if args.live_browser else ' '}] Optional: installed standalone and pytest Chromium examples passed.",
+                     f"- [{'x' if args.suite_junit else ' '}] Optional: passing full-suite evidence supplied and copied.",
+                     "- [ ] Optional: choose and configure CI runners/triggers/required checks.",
                      "- [ ] Establish publication destination and source/documentation URLs.",
                      "- [ ] Release operator supplies credentials and explicit publication authorization.",
                      "- [ ] Publish these exact verified artifact hashes and record the result."]

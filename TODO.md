@@ -762,14 +762,48 @@ destination/authorization unset. Artifact SHA-256 values:
 `2026-10-27T16:24:12.482923+00:00`. `fast-py312.xml` and `fast-py313.xml` record
 the supported-Python fast runs. The candidate preserves copies of that evidence.
 
-**Still pending by instruction:** actual CI wiring and its operational choices;
-the destination/source-hosting/credentials/authorization parts of the final
-release-process item; and actual publication. The local process is implemented
-and rehearsed in [the release guide](docs/releasing.md), but that item remains
-unchecked because it explicitly includes destination decisions that have been
-deferred. Any later source/metadata changes need fresh validation and new
-artifact hashes before publication approval. A verified local candidate is not
-a published release, and the overall section 3 criteria are not all checked off.
+Local artifact handoff follow-up (2026-10-27): the user permits manual testing
+and does not require a passing full suite or CI before sharing a candidate.
+`./scripts/release.sh` wraps the existing distribution validator without
+requiring JUnit evidence or uploading files. The source archive now includes
+`docs/consumer-quickstart.md` and a minimal `examples/consumer/` pytest starter
+for an existing application and separately owned daemon. The release guide
+documents manual file sharing and optional GitHub draft-prerelease uploads.
+PyPI publishing remains deferred. These additions do not choose a host or
+complete the CI/publication checkboxes below.
+
+Verification: `./scripts/release.sh` produced the unpublished candidate
+`dist/release-candidate/20261027T235458478745Z-e0868c44/` with reproducible
+wheel/source builds, checked contents, fresh installs and both HTTP/TCP probes.
+No full-suite evidence was supplied or required. All nine `tests/test_release.py`
+checks passed. The installed-example checker collected both pytest examples
+outside the checkout. The consumer starter extracted from this source archive
+then passed against the installed wheel and actual PHP/Xdebug/Chromium in DDEV
+(one test, 18.67 seconds). Artifact checksums and the current source manifest
+were checked. No files were uploaded and no new full-suite pass is claimed.
+
+GitHub release follow-up (2026-10-28): the user requested a way to share the
+wheel through GitHub Releases. `scripts/github_release.py` validates a candidate
+and its hashes, previews release notes with `--dry-run`, and uploads the three
+artifact files to a draft prerelease by default (`--publish` makes it public
+immediately). The repository defaults to GitHub `origin`, currently the public
+`djotto/DBGpilot`; GitHub CLI authentication was verified. It requires an
+existing pushed tag and does not commit/push source or tags. Sixteen focused
+release/uploader tests passed, including refusal of changed files and a
+read-only preview. A fresh `./scripts/release.sh` run passed packaging/install
+validation without full-suite evidence and produced
+`dist/release-candidate/20261028T002331074733Z-fe0aa851/`, including the uploader
+and updated consumer/release docs. Artifact hashes/current source match; its
+GitHub dry run passed. No GitHub release has been created or uploaded.
+
+**Still pending:** CI wiring and its operational choices, committing/tagging
+the intended release source, and actually sharing a candidate. GitHub Releases
+is now the chosen artifact destination and source hosting is established; PyPI
+remains deferred. The [release guide](docs/releasing.md) documents the manual
+workflow, and full-suite tests/CI are optional for that workflow. Any later
+source/metadata changes need fresh validation and new artifact hashes. A
+verified local candidate is not a published release; the overall section 3
+criteria are not all checked off.
 
 ### 4. Create a standalone DBGpilot skill
 

@@ -55,6 +55,8 @@ assert DebuggerSetup().config.launch is False
         run(python, work / "examples/checkout_debug.py", "--help")
         run(python, "-m", "pytest", "--collect-only", "-q", work / "examples/pytest",
             "-o", "asyncio_default_fixture_loop_scope=function")
+        run(python, "-m", "pytest", "--collect-only", "-q", "-c", work / "examples/consumer/pytest.ini",
+            work / "examples/consumer")
         if args.live:
             source = root / "src/checkout.php"
             line = next(index for index, text in enumerate(source.read_text().splitlines(), 1)

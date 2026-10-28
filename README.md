@@ -5,6 +5,8 @@ MIT licensed, with no runtime dependencies outside the standard library.
 
 Current version: **0.1.0, unpublished candidate**. Install a supplied wheel or
 source archive and follow the [first-breakpoint guide](docs/installation.md).
+For an existing pytest / async Playwright project, start with the
+[consumer quickstart](docs/consumer-quickstart.md) and copyable minimal example.
 See [release policy](docs/release-policy.md), [changelog](CHANGELOG.md), and
 [candidate validation/rehearsal](docs/releasing.md) for compatibility and status.
 
@@ -128,6 +130,19 @@ TOML settings, ownership, worker isolation, and standalone/pytest examples.
 See [the API guide](docs/api.md) for state/lifetime rules and Xdebug limitations.
 
 ## Install and test
+
+Prepare a local artifact for testing or manual sharing with
+`./scripts/release.sh`. It wraps the distribution validator, builds wheel/source
+artifacts and checks fresh installs without running the full test suite or
+uploading anything. See [manual handoff and upload](docs/releasing.md#manual-upload)
+for the next step. Run the broader tests separately when you choose.
+
+To share a candidate on GitHub, use
+`poetry run python scripts/github_release.py CANDIDATE --tag TAG`.
+It uploads the checked files to a draft prerelease with consumer install notes;
+`--dry-run` previews it and `--publish` publishes immediately. See the
+[GitHub release steps](docs/releasing.md#github-release-command) for committing,
+tagging and making the download available to consumers.
 
 An artifact installation needs neither Poetry nor the development fixtures:
 

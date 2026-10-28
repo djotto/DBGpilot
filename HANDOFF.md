@@ -1,6 +1,6 @@
 # DBGpilot conversation and implementation handoff
 
-Snapshot date: 2026-10-27. Workspace: `/Users/djotto/projects/xdebug`.
+Snapshot date: 2026-10-27. Workspace: `/Users/djotto/projects/DBGpilot`.
 Purpose: sufficient context for another LLM to continue this project without
 repeating research, undoing agreed architecture, or mistaking planned work for
 implemented functionality. This document summarizes the conversation and current
@@ -8,9 +8,30 @@ workspace; source files and `TODO.md` remain authoritative if they later change.
 
 ## 0. Immediate state / latest instructions
 
-- Current user request: update `HANDOFF.md` with this conversation's implementation,
-  review, release preparation and verification findings. This turn changes only
-  the handoff; it does not authorize starting another backlog item.
+- Latest scope: make the wheel shareable through GitHub Releases. Added
+  `scripts/github_release.py` to the existing local release wrapper, consumer
+  quickstart and minimal pytest starter. It validates candidate hashes,
+  generates consumer-facing release notes, supports a local `--dry-run`,
+  defaults to uploading a draft prerelease and supports immediate `--publish`.
+- The latest user request explicitly authorizes committing/pushing these release
+  changes, tagging the matching source and publishing the validated candidate
+  as `v0.1.0-testing.1` on GitHub. Complete that publication workflow; PyPI is
+  still outside its scope.
+- The user is still testing and explicitly permits manual testing rather than
+  requiring a passing full suite before sharing artifacts. CI is optional for
+  this handoff workflow. PyPI publishing remains deferred. No upload has been made.
+- Current GitHub-ready local candidate:
+  `dist/release-candidate/20261028T002331074733Z-fe0aa851/`. Reproducible builds,
+  archive checks and both fresh-install HTTP/TCP probes passed without full-suite
+  evidence. Sixteen focused release/uploader tests passed. Candidate hashes and
+  current source match; its local GitHub upload preview passed. No release exists
+  yet. Usage is documented in `docs/releasing.md#github-release-command`.
+- Local handoff candidate before the GitHub uploader additions:
+  `dist/release-candidate/20261027T235458478745Z-e0868c44/`.
+  Packaging/install validation passed without full-suite evidence. Nine release
+  checks passed, both installed pytest examples collected, and the consumer
+  starter from the source archive passed one real PHP/Xdebug/Chromium test
+  against the installed wheel (18.67 seconds). Nothing was uploaded.
 - TODO sections **1 and 2 are complete**, including the optional pytest integration.
   The independent parts of section 3 are implemented and rehearsed. Four later
   code-review findings, CR01–CR04, are also fixed and checked off.
@@ -34,14 +55,21 @@ workspace; source files and `TODO.md` remain authoritative if they later change.
   All new review regressions passed there except the unavailable `127.0.0.2`
   case, which skipped. Do not turn the Linux result into a claimed current
   passing host suite. Details and reports are in section 11 and `TODO.md`.
-- Current unpublished candidate:
+- Last full-suite-validated unpublished candidate, before the local handoff additions:
   `dist/release-candidate/20261027T211106676266Z-1993e889/`.
-  Its manifest matches the current release inputs. Earlier candidates remain
-  historical; their hashes differ from this fixed implementation.
-- Package version remains `0.1.0`; HTTP protocol remains `dbgpilot/1`. No CI
-  provider, runner/trigger policy, publication destination/source hosting,
-  credentials or release authorization has been established. Nothing published.
-- Workspace currently has no `.git` directory. Do not invent commits/branches.
+  Its packaged documentation predates the local handoff additions. Build a fresh
+  candidate with `./scripts/release.sh` when inputs change again; the current
+  local handoff candidate is listed above. Do not use old artifact hashes for
+  these additions.
+- Package version remains `0.1.0`; HTTP protocol remains `dbgpilot/1`. CI provider
+  and runner/trigger policy remain deferred. GitHub origin is the public
+  `djotto/DBGpilot`, and CLI authentication works. There were no GitHub releases
+  or tags when checked for this follow-up. The source changes still need to be
+  committed/pushed and tagged before upload; the uploader verifies remote tag
+  existence but relies on the operator to match tag source to candidate source.
+  Nothing has been published.
+- Workspace has a `.git` directory. Inspect Git state before reporting commits
+  or branches; do not infer them from this handoff.
 
 ## 1. Product goal and user intent
 
@@ -148,7 +176,16 @@ User collaboration preferences:
     test startup budget increase was investigated and reverted; it is not part
     of the final change. The host fast suite is not claimed passing. A reported
     CLI child was checked and had exited. See the preserved evidence below.
-23. Current turn updates this handoff only; no further implementation is underway.
+23. Corrected this handoff's workspace path and Git-directory status after the
+    checkout moved to `/Users/djotto/projects/DBGpilot`.
+24. Added the local release wrapper, consumer pytest starter and quickstart,
+    and manual upload instructions. Full tests remain a separate manual choice;
+    PyPI and CI wiring remain deferred.
+25. Added the GitHub release uploader, with a read-only preview, candidate hash
+    checks, draft-prerelease default and explicit immediate-publish option.
+    Verified public GitHub origin and authentication, passed 16 focused tests,
+    and built a fresh validated candidate. No commits/tags were pushed and no
+    release was created.
 
 ## 3. Architecture and non-negotiable lifetime semantics
 
@@ -775,7 +812,8 @@ Provider-independent implementation is finished; no hosted pipeline is selected.
   excludes generated fixtures/vendor/reference code, tests, handoffs/TODO and
   local evidence. Validate before claiming support or publishing changed inputs.
 
-Current candidate (supersedes the earlier 500-test candidate for this code):
+Full-suite-validated candidate before the local handoff additions (supersedes
+the earlier 500-test candidate for the reviewed implementation):
 
 `dist/release-candidate/20261027T211106676266Z-1993e889/`
 
@@ -783,7 +821,8 @@ Current candidate (supersedes the earlier 500-test candidate for this code):
 - Source SHA-256: `8269a3a1a52ced20edc2232e855e8d5661d4d511146e09eeeb46b6af8686a263`
 - `validation.json` status `validated-unpublished-candidate`; all requested
   checks true, copied full suite 514. `published=false`, destination null and
-  authorization false. Source manifest/current inputs and artifact hashes checked.
+  authorization false. Source manifest/inputs and artifact hashes were checked
+  at that milestone; packaged docs/examples have since changed.
 - Includes artifacts, `SHA256SUMS`, source/contents inventories, logs, copied
   evidence and `CHECKLIST.md`. Every validation invocation makes a new directory.
 - Historical pre-fix runs: `dist/release-candidate/20261027T162534350311Z-2e27a728/`
@@ -853,6 +892,30 @@ Other meaningful tested scenarios:
 - Optional-command positive behaviour scripted only; actual Xdebug rejection is
   separately tested. No full-protocol or unlimited-throughput claim is justified.
 
+### Local artifact handoff verification
+
+`./scripts/release.sh` passed on host Python 3.12.9 with loopback access. The
+first sandboxed attempt failed starting the installed probe's server; the
+unsandboxed rerun passed without changing the validator. The successful run is
+`dist/release-candidate/20261027T235458478745Z-e0868c44/`. It includes the new
+quickstart, consumer starter and release wrapper in the source archive. Current
+source hashes and artifact checksums match. It deliberately has no `full_suite`
+evidence and remains unpublished.
+
+The nine release contract checks passed. The installed-example checker verified
+core isolation, standalone help and collection of both pytest examples outside
+the checkout. A separate one-off check extracted `examples/consumer/` from the
+source archive and ran it with the installed wheel against actual PHP/Xdebug
+and Chromium in DDEV: one test passed in 18.67 seconds, including first-client
+closure, reconnect, detach and successful browser navigation. This is focused
+verification, not a new full-suite or fast-suite claim.
+
+After the checkout move, `poetry install` repaired the host editable install.
+DDEV's stale old-path registry entries were cleared and the parent project
+started at the new path. Browser system dependencies were reinstalled in its
+recreated container. The parent project was stopped after this focused check;
+the Drupal fixture was not started or tested in this follow-up.
+
 ## 12. Remaining work: current agreed plan
 
 Read `TODO.md`'s "Remaining work — Python integration and release readiness"
@@ -865,12 +928,13 @@ The current eight unchecked items are:
 1. **CI:** choose provider, runners, per-change/scheduled/release triggers and
    required checks. Wire the existing fast/full/distribution scripts into that
    service with caches and retained failure evidence. No provider chosen yet.
-2. **Release destination/publication:** local process/rehearsal is complete, but
-   the item's checkbox includes destination/source hosting, operator credentials
-   and explicit authorization. Those decisions and actual publication remain
-   pending. Do not mark all of section 3 complete or upload artifacts without
-   the missing authorization/destination. Its three independent items are done:
-   distribution automation, onboarding and metadata/compatibility policy.
+2. **Release publication:** GitHub Releases is now the chosen artifact destination
+   and the public repository/authentication are established. The local build and
+   uploader are ready; committing/pushing/tagging the intended source and
+   actually sharing a release remain pending. Its three independent items are
+   done: distribution automation, onboarding and metadata/compatibility policy.
+   PyPI remains deferred. Full-suite tests and hosted CI are optional for this
+   manual artifact handoff.
 
 The user deliberately requested the build-pipeline-independent work. Keep those
 deferred choices deferred unless a subsequent request changes the scope.
@@ -964,7 +1028,7 @@ their current contents. Recheck upstream documentation if making new claims.
 ## 15. Resumption checklist for the next LLM
 
 1. Read the latest user message; this handoff is context, not automatic permission
-   to execute every backlog item. Current turn's scope is writing the handoff.
+   to execute every backlog item. Follow the scope of the latest user request.
 2. Consult current TODO/source; preserve checked completed tasks and the user's
    decisions: Python, MIT, no reference runtime dependencies, no MCP.
 3. If authorized to continue implementation, start with the requested remaining

@@ -1,9 +1,11 @@
 # Install and reach a first breakpoint
 
-DBGpilot 0.1.0 is an **unpublished candidate**. Install a supplied, verified wheel
-or source archive; no public package-index destination has been selected. The
-core supports async Python 3.12 and 3.13 and has no third-party runtime
-dependencies. PHP/Xdebug and browser tools are installed separately.
+DBGpilot 0.1.0 is available as a **GitHub testing prerelease**. Download its
+verified wheel or source archive from
+[v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1).
+Package-index publication remains pending. The core supports async Python 3.12
+and 3.13 and has no third-party runtime dependencies. PHP/Xdebug and browser
+tools are installed separately.
 
 For a copyable example in another project's test suite, use the
 [pytest / Playwright consumer quickstart](consumer-quickstart.md).

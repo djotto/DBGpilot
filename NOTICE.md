@@ -20,7 +20,7 @@ and their downloaded dependencies retain their own licensing and are external
 test tooling. The optional-engine investigation downloads its pinned candidate
 outside the package and adds no runtime dependency.
 
-This candidate is not published. The source distribution contains the package's
-Python sources, maintained documentation, examples and validation scripts.
-Source-hosting and publication URLs will be supplied by the release operator
-once those destinations are established.
+The source distribution contains the package's Python sources, maintained
+documentation, examples and validation scripts. Source is hosted at
+https://github.com/djotto/DBGpilot; testing artifacts are available through its
+GitHub Releases. Package-index publication remains pending.

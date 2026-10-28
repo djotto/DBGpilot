@@ -1,6 +1,6 @@
 # DBGpilot conversation and implementation handoff
 
-Snapshot date: 2026-10-27. Workspace: `/Users/djotto/projects/DBGpilot`.
+Snapshot date: 2026-10-28. Workspace: `/Users/djotto/projects/DBGpilot`.
 Purpose: sufficient context for another LLM to continue this project without
 repeating research, undoing agreed architecture, or mistaking planned work for
 implemented functionality. This document summarizes the conversation and current
@@ -15,17 +15,25 @@ workspace; source files and `TODO.md` remain authoritative if they later change.
   defaults to uploading a draft prerelease and supports immediate `--publish`.
 - The latest user request explicitly authorizes committing/pushing these release
   changes, tagging the matching source and publishing the validated candidate
-  as `v0.1.0-testing.1` on GitHub. Complete that publication workflow; PyPI is
-  still outside its scope.
+  as `v0.1.0-testing.1` on GitHub. That workflow is complete; PyPI remains outside
+  its scope.
 - The user is still testing and explicitly permits manual testing rather than
   requiring a passing full suite before sharing artifacts. CI is optional for
-  this handoff workflow. PyPI publishing remains deferred. No upload has been made.
-- Current GitHub-ready local candidate:
+  this handoff workflow. PyPI publishing remains deferred.
+- Published testing prerelease:
+  https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1,
+  published `2026-10-28T01:07:51Z` from commit
+  `7130cac8405e7117c2d1b4768474f2032fb684d0`. Main and the annotated tag were
+  pushed; all three public asset downloads matched the validated files.
+- Published candidate build:
   `dist/release-candidate/20261028T002331074733Z-fe0aa851/`. Reproducible builds,
   archive checks and both fresh-install HTTP/TCP probes passed without full-suite
   evidence. Sixteen focused release/uploader tests passed. Candidate hashes and
-  current source match; its local GitHub upload preview passed. No release exists
-  yet. Usage is documented in `docs/releasing.md#github-release-command`.
+  the tagged source match. Its `publication.json` records the successful upload
+  and public-download verification separately from build-time `validation.json`.
+  Main has subsequent publication-status documentation edits; build a new
+  candidate before publishing changed package inputs. Usage is documented in
+  `docs/releasing.md#github-release-command`.
 - Local handoff candidate before the GitHub uploader additions:
   `dist/release-candidate/20261027T235458478745Z-e0868c44/`.
   Packaging/install validation passed without full-suite evidence. Nine release
@@ -39,8 +47,8 @@ workspace; source files and `TODO.md` remain authoritative if they later change.
 - User explicitly rejected MCP: **"Remove referenes to MCP from TODO.md - we're
   not doing that."** All MCP references and its proposed work package were
   removed from `TODO.md`. It is not optional future scope in the agreed plan.
-- `TODO.md` has **8 unchecked tasks**: CI plus the destination/publication portion
-  of section 3 (2), and the standalone DBGpilot skill in section 4 (6). Section 4
+- `TODO.md` has **7 unchecked tasks**: CI in section 3 (1), and the standalone
+  DBGpilot skill in section 4 (6). Section 4
   can proceed independently of CI or publication choices when requested. The
   user explicitly deferred build-pipeline decisions; do not choose them silently.
 - Historical spec-audit checkboxes are all checked. This records completion of
@@ -63,11 +71,10 @@ workspace; source files and `TODO.md` remain authoritative if they later change.
   these additions.
 - Package version remains `0.1.0`; HTTP protocol remains `dbgpilot/1`. CI provider
   and runner/trigger policy remain deferred. GitHub origin is the public
-  `djotto/DBGpilot`, and CLI authentication works. There were no GitHub releases
-  or tags when checked for this follow-up. The source changes still need to be
-  committed/pushed and tagged before upload; the uploader verifies remote tag
-  existence but relies on the operator to match tag source to candidate source.
-  Nothing has been published.
+  `djotto/DBGpilot`, and CLI authentication works. The first GitHub testing
+  prerelease is published as described above. The uploader verifies remote tag
+  existence but relies on the operator to match tag source to candidate source;
+  the complete tagged package inventory was explicitly checked for this release.
 - Workspace has a `.git` directory. Inspect Git state before reporting commits
   or branches; do not infer them from this handoff.
 
@@ -186,6 +193,11 @@ User collaboration preferences:
     Verified public GitHub origin and authentication, passed 16 focused tests,
     and built a fresh validated candidate. No commits/tags were pushed and no
     release was created.
+26. At the user's explicit request, committed/pushed the tooling/docs, verified
+    the committed package inputs, pushed `v0.1.0-testing.1`, and published the
+    GitHub testing prerelease. Downloaded all three public assets and verified
+    their exact contents. Recorded publication separately from build validation
+    and updated main's status documentation without changing release assets.
 
 ## 3. Architecture and non-negotiable lifetime semantics
 
@@ -921,20 +933,18 @@ the Drupal fixture was not started or tested in this follow-up.
 Read `TODO.md`'s "Remaining work — Python integration and release readiness"
 section for exact checkboxes. Sections 1 and 2 and CR01–CR04 are checked complete.
 There is no remaining pytest integration implementation task for the agreed scope.
-The current eight unchecked items are:
+The current seven unchecked items are:
 
-### Section 3: deferred operational choices (2 unchecked)
+### Section 3: deferred operational choices (1 unchecked)
 
 1. **CI:** choose provider, runners, per-change/scheduled/release triggers and
    required checks. Wire the existing fast/full/distribution scripts into that
    service with caches and retained failure evidence. No provider chosen yet.
-2. **Release publication:** GitHub Releases is now the chosen artifact destination
-   and the public repository/authentication are established. The local build and
-   uploader are ready; committing/pushing/tagging the intended source and
-   actually sharing a release remain pending. Its three independent items are
-   done: distribution automation, onboarding and metadata/compatibility policy.
-   PyPI remains deferred. Full-suite tests and hosted CI are optional for this
-   manual artifact handoff.
+
+Release publication is complete for the GitHub testing prerelease. The release
+process, distribution automation, onboarding and metadata/compatibility policy
+are checked off. PyPI remains deferred. Full-suite tests and hosted CI are
+optional for this manual artifact handoff.
 
 The user deliberately requested the build-pipeline-independent work. Keep those
 deferred choices deferred unless a subsequent request changes the scope.

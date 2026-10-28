@@ -14,8 +14,10 @@ python -m playwright install chromium
 ```
 
 Build the wheel with `poetry build`, or substitute its actual download path.
-DBGpilot has not yet been published as part of this implementation. It does not import
-Playwright or pytest when importing the core library.
+Testing artifacts are available from
+[GitHub Releases](https://github.com/djotto/DBGpilot/releases); package-index
+publication remains pending. Importing the core library does not import
+Playwright or pytest.
 
 ## Connection and ownership
 

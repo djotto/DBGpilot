@@ -692,7 +692,7 @@ the development checkout without shipping the PHP/Drupal development fixtures.
   metadata, documentation, and CLI output. Describe API compatibility expectations,
   HTTP contract/version detection, and upgrade/restart effects on in-memory
   sessions. Keep MIT licensing and source/provenance information clear.
-- [ ] **Create and rehearse the release process.** Document reproducible build,
+- [x] **Create and rehearse the release process.** Document reproducible build,
   validation, artifact inspection, and publication steps, including the chosen
   distribution destination and credentials supplied by the release operator.
   Produce reviewable artifacts and a release checklist from a clean environment.
@@ -794,16 +794,24 @@ read-only preview. A fresh `./scripts/release.sh` run passed packaging/install
 validation without full-suite evidence and produced
 `dist/release-candidate/20261028T002331074733Z-fe0aa851/`, including the uploader
 and updated consumer/release docs. Artifact hashes/current source match; its
-GitHub dry run passed. No GitHub release has been created or uploaded.
+GitHub dry run passed.
 
-**Still pending:** CI wiring and its operational choices, committing/tagging
-the intended release source, and actually sharing a candidate. GitHub Releases
-is now the chosen artifact destination and source hosting is established; PyPI
-remains deferred. The [release guide](docs/releasing.md) documents the manual
-workflow, and full-suite tests/CI are optional for that workflow. Any later
-source/metadata changes need fresh validation and new artifact hashes. A
-verified local candidate is not a published release; the overall section 3
-criteria are not all checked off.
+Publication (2026-10-28): after explicit user authorization, committed and pushed
+the release tooling/docs as `7130cac8405e7117c2d1b4768474f2032fb684d0`, verified
+that commit's complete packaged-source inventory against the candidate manifest,
+and pushed annotated tag `v0.1.0-testing.1`. Published
+[the GitHub testing prerelease](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1)
+at `2026-10-28T01:07:51Z`. Its wheel, source archive and `SHA256SUMS` were each
+downloaded through their public URLs and matched byte-for-byte. The candidate's
+`publication.json` records destination, authorization, commit/tag, release ID,
+URLs, timestamps and hashes separately from the unchanged build validation.
+Post-publication status edits on main do not change the tagged source or assets.
+
+**Still pending:** CI wiring and its operational choices; section 4's standalone
+skill. PyPI remains deferred. The [release guide](docs/releasing.md) documents
+the manual workflow, and full-suite tests/CI are optional for that workflow.
+Later package/source changes need a fresh candidate before the next publication.
+The overall section 3 criteria are not all checked off because CI is unfinished.
 
 ### 4. Create a standalone DBGpilot skill
 

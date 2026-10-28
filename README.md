@@ -3,8 +3,9 @@
 An asynchronous Python controller for Xdebug's DBGp protocol. Python 3.12/3.13,
 MIT licensed, with no runtime dependencies outside the standard library.
 
-Current version: **0.1.0, unpublished candidate**. Install a supplied wheel or
-source archive and follow the [first-breakpoint guide](docs/installation.md).
+Current version: **0.1.0, testing prerelease**. Download the wheel/source from
+[GitHub Release v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1)
+and follow the [first-breakpoint guide](docs/installation.md).
 For an existing pytest / async Playwright project, start with the
 [consumer quickstart](docs/consumer-quickstart.md) and copyable minimal example.
 See [release policy](docs/release-policy.md), [changelog](CHANGELOG.md), and

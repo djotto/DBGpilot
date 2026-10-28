@@ -2,8 +2,10 @@
 
 ## 0.1.0 — Unreleased
 
-The first public version is prepared as an unpublished candidate. No package
-index, publication date, or source-hosting destination has been selected.
+Stable/package-index publication is pending. A testing prerelease was published
+on 2026-10-28 as
+[v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1),
+with the validated wheel, source archive and checksums from commit `7130cac`.
 
 - Async stdlib-only DBGp controller, structured values/snapshots, capability
   discovery, breakpoints, stepping, PHP evaluation/mutation and bounded cleanup.

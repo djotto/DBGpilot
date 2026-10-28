@@ -1,6 +1,8 @@
 # Version and compatibility policy
 
-The current package version is **0.1.0**, prepared as an unpublished candidate.
+The current package version is **0.1.0**, available as GitHub testing prerelease
+[v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1).
+Stable/package-index publication remains pending.
 The source version, Poetry metadata, `dbgpilot.__version__`, CLI `--version`
 and server health/readiness must agree. Validation fails if they disagree.
 Candidate status is recorded in the release manifest; it is not an extra version
@@ -61,6 +63,7 @@ to remain alive.
 MIT licensing is packaged in LICENSE, and NOTICE.md identifies the source and
 reference provenance. The source archive contains the maintained implementation;
 generated fixtures, vendor trees, reference engines and local evidence are not
-distribution contents. Publication destination, source/documentation hosting,
-CI provider/runners/triggers and release credentials remain operator decisions.
-See [releasing](releasing.md) for the rehearsed local process and pending steps.
+distribution contents. Source and testing artifacts are hosted on GitHub at
+https://github.com/djotto/DBGpilot. CI provider/runners/triggers and any future
+package-index publication remain operator decisions. See [releasing](releasing.md)
+for the local build and manual GitHub publication process.

@@ -1,3 +1,12 @@
+Important note: This project is completely vibe-coded, even the docs. I haven't
+even opened most of the files here, and if you use it it's completely at your
+own risk. All the "tests" are LLM-written, too. They mean nothing.
+
+The goal is to extend pytest with xdebug controls, so it can use Playwright and
+xdebug simultaneously. There are other potential uses (eg a command-line tool
+to allow LLMs to interact with xdebug), but controlling Playwright and xdebug
+from the same Python script was my main goal.
+
 # DBGpilot
 
 An asynchronous Python controller for Xdebug's DBGp protocol. Python 3.12/3.13,

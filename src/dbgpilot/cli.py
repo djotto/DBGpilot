@@ -63,7 +63,7 @@ async def _call(args):
     if raw == "-":
         raw = sys.stdin.read()
     elif raw.startswith("@"):
-        raw = Path(raw[1:]).read_text()
+        raw = Path(raw[1:]).read_text(encoding="utf-8")
     params = json.loads(raw)
     if not isinstance(params, dict):
         raise ValueError("--params must contain a JSON object")

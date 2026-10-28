@@ -7,6 +7,7 @@ import posixpath
 import re
 from urllib.parse import quote, unquote, urlsplit
 
+from ._settings import ProjectSettings, read_config
 from .errors import PathMappingError
 
 
@@ -168,9 +169,10 @@ class PathMapper:
     @classmethod
     def from_file(cls, path):
         """Load source path mappings from a DBGpilot TOML configuration file."""
-        from .config import SetupConfig
-
-        return SetupConfig.from_file(path).path_mapper
+        path, values, mappings = read_config(path)
+        mapper = cls(mappings, base_dir=path.parent)
+        ProjectSettings(**values)
+        return mapper
 
     @staticmethod
     def find_config(directory=None):

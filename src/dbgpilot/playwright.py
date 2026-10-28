@@ -27,6 +27,7 @@ class BreakpointSpec:
     options: dict = field(default_factory=dict)
 
     def parameters(self):
+        """Return breakpoint arguments with the file converted to text."""
         return {"file": str(self.file) if self.file is not None else None,
                 "line": self.line, **self.options}
 
@@ -52,6 +53,7 @@ class PausedBrowser:
         return (client or self._owner.client).session(self.session_id)
 
     async def events(self, *, client=None, timeout=30):
+        """Poll session events after the saved cursor and advance it to the result."""
         batch = await self.session(client).events(after=self.cursor, timeout=timeout)
         self.cursor = batch["cursor"]
         return batch
@@ -62,6 +64,11 @@ class PausedBrowser:
             return await asyncio.shield(self.action)
 
     async def close(self):
+        """Release the captured session and settle its browser action.
+
+        Call from the capture's owning task, outside the browser action. Cleanup is
+        shared by repeated calls and shielded from caller cancellation.
+        """
         if asyncio.current_task() is self.action:
             raise SessionStateError(
                 "Close the capture from its owning task, outside its browser action",
@@ -116,6 +123,7 @@ class PlaywrightDebugger:
 
     @staticmethod
     def trigger_url(url, idekey):
+        """Replace Xdebug trigger parameters in an absolute HTTP(S) URL with idekey."""
         parsed = urlsplit(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("A debugging request needs an absolute HTTP(S) URL")
@@ -126,6 +134,11 @@ class PlaywrightDebugger:
 
     async def goto(self, url, *, breakpoints=(), variables=(), expressions=(), timeout=30,
                    navigation_timeout=0):
+        """Navigate to a URL and return a capture when PHP reaches a breakpoint.
+
+        The capture timeout covers debugger coordination; navigation_timeout controls
+        the browser navigation separately. PHP remains paused in the returned capture.
+        """
         parsed = urlsplit(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("goto needs an absolute HTTP(S) URL")
@@ -300,6 +313,11 @@ class PlaywrightDebugger:
                     raise
 
     async def aclose(self):
+        """Release captures and cancel pending debugger operations and browser actions.
+
+        Call outside a tracked browser action. Repeated calls share cleanup, which
+        continues even if the caller is cancelled.
+        """
         if asyncio.current_task() in self._actions:
             raise SessionStateError(
                 "Close the debugger from its owning task, outside the browser action",

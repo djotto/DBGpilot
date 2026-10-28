@@ -70,10 +70,16 @@ class Controller:
 
     @property
     def proxy_registrations(self):
+        """Return the proxy registrations currently owned by this controller."""
         return tuple(result for _, result in self._proxies.values())
 
     async def register_proxy(self, host="127.0.0.1", port=9001, *, idekey,
                              listen_port=None, multiple_sessions=True, timeout=5):
+        """Register an IDE key with a proxy and retain ownership for cleanup.
+
+        Start the listener first. Advertise its port unless listen_port is supplied
+        for a different externally reachable port.
+        """
         await self.start()
         client = ProxyClient(host, port, timeout=timeout)
         async with asyncio.timeout(timeout), self._proxy_lock:
@@ -93,6 +99,7 @@ class Controller:
             return result
 
     async def unregister_proxy(self, host="127.0.0.1", port=9001, *, idekey, timeout=5):
+        """Unregister an IDE key with the proxy and discard its owned registration."""
         client = ProxyClient(host, port, timeout=timeout)
         async with asyncio.timeout(timeout), self._proxy_lock:
             if self._closed.is_set():
@@ -103,10 +110,12 @@ class Controller:
 
     @property
     def sessions(self) -> tuple[Session, ...]:
+        """Return the currently open sessions, pruning closed entries."""
         self._sessions = [session for session in self._sessions if not session.closed]
         return tuple(self._sessions)
 
     async def start(self):
+        """Start the DBGp listener once; reject attempts to restart a closed controller."""
         async with self._start_lock:
             if self._closed.is_set():
                 raise ConnectionClosed("A closed controller cannot be restarted")
@@ -170,6 +179,7 @@ class Controller:
         self._errors.put_nowait(error)
 
     async def wait_for_session(self, *, timeout=None) -> Session:
+        """Return the next open session after its handshake, with an optional timeout."""
         async with asyncio.timeout(timeout):
             while True:
                 session = await wait_queue(
@@ -185,6 +195,7 @@ class Controller:
         )
 
     async def aclose(self):
+        """Unregister owned proxy keys and close all sessions and incoming connections."""
         if self._closed.is_set():
             return
         self._closed.set()

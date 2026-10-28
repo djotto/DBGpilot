@@ -40,6 +40,7 @@ class _Remote:
 
     @property
     def uri(self):
+        """Return an escaped absolute file URI for this normalized engine path."""
         path = "/" + "/".join(self.parts)
         if self.windows and len(self.parts) == 1:
             path += "/"
@@ -82,6 +83,7 @@ class PathMapping:
     remote_case_sensitive: bool | None = None
 
     def to_dict(self):
+        """Return a copy of the directory roots and remote case policy."""
         return vars(self).copy()
 
 
@@ -93,6 +95,7 @@ class _Rule:
     case_sensitive: bool
 
     def remote_key(self, parts):
+        """Return path components normalized according to the rule's remote case policy."""
         return tuple(parts) if self.case_sensitive else tuple(part.casefold() for part in parts)
 
 
@@ -152,9 +155,11 @@ class PathMapper:
 
     @property
     def mappings(self):
+        """Return the normalized mapping records in configuration order."""
         return tuple(rule.mapping for rule in self._rules)
 
     def with_overrides(self, mappings, *, base_dir=None):
+        """Replace mappings sharing an override's local root and retain all other roots."""
         overrides = PathMapper(mappings, base_dir=base_dir)
         retained = [rule.mapping for rule in self._rules
                     if not any(rule.local == other.local for other in overrides._rules)]
@@ -162,12 +167,14 @@ class PathMapper:
 
     @classmethod
     def from_file(cls, path):
+        """Load source path mappings from a DBGpilot TOML configuration file."""
         from .config import SetupConfig
 
         return SetupConfig.from_file(path).path_mapper
 
     @staticmethod
     def find_config(directory=None):
+        """Find the nearest dbgpilot.toml in a directory or its ancestors, or return None."""
         directory = Path.cwd() if directory is None else Path(directory).absolute()
         for parent in (directory, *directory.parents):
             candidate = parent / "dbgpilot.toml"
@@ -215,6 +222,11 @@ class PathMapper:
         return rule.local.joinpath(*suffix)
 
     def to_remote(self, path):
+        """Map a local path to an engine URI and verify that the mapping round-trips.
+
+        Preserve explicit file: and dbgp: URIs. With no configured mappings, convert
+        the normalized local path directly to an absolute file URI.
+        """
         text = _text(path)
         if text.startswith(("file:", "dbgp:")):
             return text
@@ -229,6 +241,7 @@ class PathMapper:
         return remote.uri
 
     def to_local(self, uri):
+        """Map an engine file URI to a local path and reject ambiguous round-trips."""
         try:
             remote = _remote(uri)
         except ValueError as error:

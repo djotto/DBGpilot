@@ -14,6 +14,7 @@ MAX_PACKET_SIZE = 16 * 1024 * 1024
 
 
 def local_name(element: ET.Element) -> str:
+    """Return an XML element's tag without its namespace prefix."""
     return element.tag.rsplit("}", 1)[-1]
 
 
@@ -41,6 +42,7 @@ async def _read_payload(reader, max_size, initial=b""):
 
 
 def parse_xml(body, *, require_namespace=True, allow_proxy_error=False):
+    """Parse DBGp XML, rejecting NUL bytes, DTDs, entities, and invalid namespaces."""
     if b"\0" in body:
         raise ProtocolError("DBGp XML requires an ASCII-compatible encoding without NUL bytes")
     if b"<!DOCTYPE" in body.upper() or b"<!ENTITY" in body.upper():
@@ -57,6 +59,11 @@ def parse_xml(body, *, require_namespace=True, allow_proxy_error=False):
 
 async def read_packet(reader: asyncio.StreamReader, max_size: int = MAX_PACKET_SIZE, *,
                       xdebug_bytes=False, with_encoding=False) -> ET.Element:
+    """Read a bounded DBGp packet and parse its XML.
+
+    Optionally decode Xdebug's Latin-1 byte container. With with_encoding=True,
+    return the element and declared encoding as a pair.
+    """
     body = await _read_payload(reader, max_size)
     element = parse_xml(body, allow_proxy_error=True)
     declaration = re.match(br"\s*<\?xml\b[^?]*encoding\s*=\s*['\"]([^'\"]+)['\"]", body)
@@ -129,6 +136,11 @@ def encode_command(
     name: str, transaction_id: int, arguments: Mapping[str, object] | None = None,
     data: str | bytes | None = None,
 ) -> bytes:
+    """Encode a validated command with quoted arguments and optional base64 data.
+
+    Text data uses UTF-8 with surrogateescape. The returned bytes include the
+    transaction ID and terminating NUL byte.
+    """
     if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", name):
         raise ValueError("Invalid command name")
     if transaction_id < 1:
@@ -147,6 +159,7 @@ def encode_command(
 
 
 def file_uri(file: str | Path) -> str:
+    """Preserve explicit file: or dbgp: URIs, otherwise build an absolute file URI."""
     text = str(file)
     if text.startswith(("file:", "dbgp:")):
         return text
@@ -154,6 +167,11 @@ def file_uri(file: str | Path) -> str:
 
 
 def content_bytes(element: ET.Element, *, mixed=False) -> bytes:
+    """Decode element body bytes, validating any declared base64 encoding.
+
+    With mixed=True, include child tail text while excluding child content.
+    Plain text uses UTF-8 with surrogateescape to preserve application bytes.
+    """
     text = element.text or ""
     if mixed:
         # Notification body text belongs to the parent, including tails after

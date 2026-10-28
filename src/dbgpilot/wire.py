@@ -16,10 +16,12 @@ class RemoteError(DBGpilotError):
         super().__init__(message)
 
     def to_dict(self):
+        """Return the JSON-RPC error code, message, and structured data."""
         return {"code": self.code, "message": self.message, "data": self.data}
 
 
 def json_value(value):
+    """Recursively convert results to JSON-safe values, preserving binary data as base64."""
     if isinstance(value, BaseException):
         result = {"type": type(value).__name__, "message": str(value)}
         if isinstance(value, (CommandError, ProxyError)):

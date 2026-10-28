@@ -40,14 +40,17 @@ class DebuggerSetup:
 
     @property
     def owns_server(self):
+        """Return whether this setup launched and retains a server process handle."""
         return self._process is not None
 
     @property
     def pid(self):
+        """Return the owned server's process ID, or None when using an existing server."""
         return None if self._process is None else self._process.pid
 
     @property
     def url(self):
+        """Return the connected API URL, falling back to readiness or configured settings."""
         if self.client is not None:
             return self.client.url
         return self.ready["url"] if self.ready else self.config.url
@@ -65,6 +68,11 @@ class DebuggerSetup:
         await self.aclose()
 
     async def start(self):
+        """Launch if configured, connect a client, and validate server readiness and identity.
+
+        Repeated calls reuse a started setup after checking its owned process. Failed
+        or cancelled startup closes the client and terminates any owned child.
+        """
         async with self._lock:
             if self._closed:
                 raise SetupError("Setup closed; create another setup or reconnect using Client")
@@ -200,6 +208,7 @@ class DebuggerSetup:
             raise SetupError("Endpoint belongs to a different server process")
 
     async def health(self):
+        """Check the owned process and validate health metadata returned by the server."""
         self._check_process()
         if self.client is None:
             raise SetupError("Start setup before using its client")
@@ -208,6 +217,7 @@ class DebuggerSetup:
         return health
 
     def debugger(self, page, *, idekey=None):
+        """Create a Playwright debugger for an async page after setup has started."""
         self._check_process()
         if not self._started or self._closed:
             raise SetupError("Start setup before creating a Playwright debugger")

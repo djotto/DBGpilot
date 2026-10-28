@@ -124,6 +124,11 @@ class Session:
 
     @classmethod
     async def connect(cls, reader, writer, *, handshake_timeout=5.0, features=None, **options):
+        """Initialize a session on an open DBGp stream and negotiate its capabilities.
+
+        Read the initialization packet within handshake_timeout, set requested
+        features, and start response dispatch. Close the session if setup fails.
+        """
         session = cls(reader, writer, **options)
         try:
             async with asyncio.timeout(handshake_timeout):
@@ -186,6 +191,7 @@ class Session:
 
     @property
     def closed(self) -> bool:
+        """Return whether the debugging connection has been shut down."""
         return self._closed.is_set()
 
     @property
@@ -195,6 +201,7 @@ class Session:
 
     @property
     def type_map(self):
+        """Return a read-only view of the most recently fetched engine type mappings."""
         return MappingProxyType(self._type_map)
 
     @property
@@ -490,13 +497,16 @@ class Session:
                     future.cancel()
 
     async def next_event(self, *, timeout=None):
+        """Return the next queued session event, optionally limiting the wait."""
         return await wait_queue(self._events, self._closed, timeout, self._error)
 
     async def feature_get(self, name) -> Feature:
+        """Query an engine feature's support flag and value, updating the capability cache."""
         node = await self.command("feature_get", {"n": name})
         return Feature(node.get("supported") == "1", (node.text or "").strip())
 
     async def feature_set(self, name, value) -> bool:
+        """Set an engine feature and return whether the engine accepted it."""
         if name == "encoding":
             normalized = str(value).casefold().replace("-", "")
             if normalized != "utf8" and not (
@@ -509,6 +519,7 @@ class Session:
         return node.get("success") == "1"
 
     async def refresh_capabilities(self):
+        """Query known features and commands and return the refreshed capability view."""
         for name in (*_FEATURES, *_COMMANDS):
             try:
                 await self.feature_get(name)
@@ -521,6 +532,7 @@ class Session:
         return self.capabilities
 
     def supports_command(self, name):
+        """Return whether the cached engine capability advertises this command as enabled."""
         feature = self._capabilities.get(name)
         return feature.enabled if feature is not None else False
 
@@ -531,6 +543,7 @@ class Session:
             raise SessionStateError(f"The engine does not advertise support for {name}")
 
     async def status(self) -> ExecutionResult:
+        """Query the engine's execution state and return validated execution metadata."""
         node = await self.command("status")
         if node.get("status") not in _STATES:
             raise ProtocolError("status returned no valid execution state")
@@ -540,6 +553,7 @@ class Session:
         return result
 
     async def stack_depth(self) -> int:
+        """Return the validated stack depth while the session is inspectable."""
         self._require_paused()
         node = await self.command("stack_depth")
         try:
@@ -551,6 +565,7 @@ class Session:
             raise ProtocolError("Invalid stack depth") from error
 
     async def typemap_get(self) -> tuple[TypeMapping, ...]:
+        """Fetch and cache the engine's language-to-common-type mappings."""
         if self.state == "stopping":
             self._require_paused()
         node = await self.command("typemap_get")
@@ -609,27 +624,38 @@ class Session:
                     self.state = previous
 
     async def run(self, *, timeout=_DEFAULT) -> ExecutionResult:
+        """Resume execution and await the engine's next execution result.
+
+        Timeout or cancellation abandons the response wait while execution remains
+        owned by this session; it does not stop PHP.
+        """
         return await self._continue("run", timeout=timeout)
 
     async def resume(self, *, timeout=_DEFAULT) -> ExecutionResult:
+        """Resume execution through run() and return its execution result."""
         return await self.run(timeout=timeout)
 
     async def run_until_break(self, *, timeout=_DEFAULT) -> ExecutionResult:
+        """Run until paused at a breakpoint, raising ExecutionFinished for other results."""
         result = await self.run(timeout=timeout)
         if not result.paused:
             raise ExecutionFinished(result)
         return result
 
     async def step_into(self, *, timeout=_DEFAULT) -> ExecutionResult:
+        """Advance execution into the next statement or function and return its result."""
         return await self._continue("step_into", timeout=timeout)
 
     async def step_over(self, *, timeout=_DEFAULT) -> ExecutionResult:
+        """Advance past the next statement without stepping into called functions."""
         return await self._continue("step_over", timeout=timeout)
 
     async def step_out(self, *, timeout=_DEFAULT) -> ExecutionResult:
+        """Run until the current function returns and report the next execution state."""
         return await self._continue("step_out", timeout=timeout)
 
     async def interrupt(self):
+        """Request a break while PHP is running, requiring engine support for async commands."""
         if self.state != "running" or not self.supports_async:
             raise SessionStateError("This engine cannot interrupt running PHP through DBGp")
         await self._require_command("break")
@@ -656,11 +682,13 @@ class Session:
             return node.get("success") == "1"
 
     async def set_stdin(self, enabled=True, *, timeout=_DEFAULT) -> bool:
+        """Enable or disable stdin redirection and return whether the engine accepted it."""
         if not isinstance(enabled, bool):
             raise ValueError("enabled must be a boolean")
         return await self.stdin(mode=int(enabled), timeout=timeout)
 
     async def send_stdin(self, data, *, timeout=_DEFAULT) -> bool:
+        """Send text or bytes to engine stdin after redirection has been enabled."""
         return await self.stdin(data=data, timeout=timeout)
 
     async def interact(self, code="", *, mode=1, timeout=_DEFAULT) -> InteractiveResult:
@@ -678,6 +706,11 @@ class Session:
         return parse_interaction(node)
 
     async def detach(self):
+        """Detach from the engine, allowing PHP to continue, then close the connection.
+
+        Reject detaching while execution is outstanding. Once detach is sent, close
+        the session even if awaiting its response fails.
+        """
         if self._execution_pending or self.state == "running":
             raise SessionStateError("Cannot detach while execution is outstanding")
         await self._require_command("detach")
@@ -700,17 +733,20 @@ class Session:
             await self.aclose(detach=False)
 
     async def stack(self, *, depth=None) -> tuple[Frame, ...]:
+        """Read stack frames at the requested depth, or all depths when depth is None."""
         self._require_paused()
         node = await self.command("stack_get", {"d": depth})
         return tuple(self._located(parse_frame(frame)) for frame in node.findall("{*}stack"))
 
     async def contexts(self, *, depth=0) -> dict[int, str]:
+        """Return the engine's context IDs and names for the requested stack depth."""
         if self.state == "stopping":
             self._require_paused()
         node = await self.command("context_names", {"d": depth})
         return {int(child.get("id")): child.get("name", "") for child in node.findall("{*}context")}
 
     async def context(self, *, context=0, depth=0):
+        """Read the properties in a context at the requested stack depth while paused."""
         self._require_paused()
         node = await self.command("context_get", {"c": context, "d": depth})
         return tuple(parse_property(child, self._type_map) for child in node.findall("{*}property"))
@@ -718,6 +754,7 @@ class Session:
     async def property_get(
         self, name, *, context=0, depth=0, page=0, max_data=None, key=None, address=None,
     ):
+        """Read one property page with optional value-size, key, and address targeting."""
         self._require_paused()
         node = await self.command("property_get", {
             "n": name, "c": context, "d": depth, "p": page, "m": max_data, "k": key, "a": address,
@@ -746,6 +783,7 @@ class Session:
 
     async def property_value(self, name, *, context=0, depth=0, page=None, key=None,
                              address=None, max_data=0) -> bytes:
+        """Return raw property value bytes using the supplied paging and target options."""
         return (await self.property_value_info(
             name, context=context, depth=depth, page=page, key=key,
             address=address, max_data=max_data,
@@ -856,6 +894,7 @@ class Session:
         return node.get("success") == "1"
 
     async def source(self, file: str | Path | None = None, *, begin=None, end=None) -> bytes:
+        """Fetch source bytes for an optional mapped file and optional begin/end line range."""
         if self.state == "stopping":
             self._require_paused()
         node = await self.command("source", {
@@ -867,6 +906,7 @@ class Session:
         return content_bytes(node)
 
     async def set_output(self, stream="stdout", *, mode=1) -> bool:
+        """Set stdout/stderr handling to 0 (off), 1 (copy), or 2 (redirect)."""
         if stream not in {"stdout", "stderr"} or mode not in {0, 1, 2}:
             raise ValueError("Choose stdout/stderr and mode 0 (off), 1 (copy), or 2 (redirect)")
         node = await self.command(stream, {"c": mode})
@@ -877,6 +917,11 @@ class Session:
         condition=None, function=None, exception=None, temporary=False,
         hit_value=None, hit_condition=None, state="enabled",
     ) -> Breakpoint:
+        """Create a validated breakpoint and return its engine record.
+
+        Map local source paths to engine URIs. Supplying a condition for a line
+        breakpoint selects the conditional breakpoint type.
+        """
         if condition is not None and kind == "line":
             kind = "conditional"
         if kind not in {"line", "conditional", "call", "return", "exception", "watch"}:
@@ -952,6 +997,7 @@ class Session:
             self._breakpoints.pop(id, None)
 
     async def get_breakpoint(self, id: str) -> Breakpoint:
+        """Fetch a breakpoint by ID and return its mapped source metadata."""
         node = await self.command("breakpoint_get", {"d": id})
         bp = node.find("{*}breakpoint")
         if bp is None:
@@ -960,6 +1006,7 @@ class Session:
         return result
 
     async def breakpoints(self) -> tuple[Breakpoint, ...]:
+        """Return all engine breakpoints with source path mapping metadata."""
         node = await self.command("breakpoint_list")
         results = tuple(
             self._located(parse_breakpoint(child)) for child in node.findall("{*}breakpoint")
@@ -969,6 +1016,7 @@ class Session:
     async def update_breakpoint(
         self, id, *, state=None, line=None, hit_value=None, hit_condition=None,
     ):
+        """Update a breakpoint's state, line, or hit condition after validating options."""
         if state not in {None, "enabled", "disabled"}:
             raise ValueError("Invalid breakpoint state")
         if line is not None and line < 1:
@@ -982,6 +1030,7 @@ class Session:
         })
 
     async def remove_breakpoint(self, id):
+        """Remove a breakpoint from the engine by ID."""
         await self.command("breakpoint_remove", {"d": id})
 
     @staticmethod
@@ -1026,6 +1075,7 @@ class Session:
 
     async def set_spawnpoint(self, file: str | Path | None = None, line: int | None = None,
                              *, state="enabled") -> Spawnpoint:
+        """Create an engine spawnpoint using an optional mapped source file and line."""
         self._spawnpoint_options(line=line, state=state)
         if state is None:
             raise ValueError("Invalid spawnpoint state")
@@ -1039,6 +1089,7 @@ class Session:
         return self._located(replace(parse_spawnpoint(node), file=uri, line=line))
 
     async def get_spawnpoint(self, id: str) -> Spawnpoint:
+        """Fetch a spawnpoint by ID after confirming engine support for the command."""
         if id is None:
             raise ValueError("Spawnpoint ID must be a nonempty string")
         self._spawnpoint_options(id=id)
@@ -1047,6 +1098,7 @@ class Session:
         return self._located(parse_spawnpoint(node.find("{*}spawnpoint")))
 
     async def spawnpoints(self) -> tuple[Spawnpoint, ...]:
+        """Return all engine spawnpoints with source path mapping metadata."""
         await self._require_command("spawnpoint_list")
         node = await self.command("spawnpoint_list")
         return tuple(
@@ -1054,6 +1106,7 @@ class Session:
         )
 
     async def update_spawnpoint(self, id: str, *, state=None, line=None):
+        """Change a spawnpoint's state or line, requiring at least one supplied update."""
         if id is None:
             raise ValueError("Spawnpoint ID must be a nonempty string")
         self._spawnpoint_options(id=id, line=line, state=state)
@@ -1063,6 +1116,7 @@ class Session:
         await self.command("spawnpoint_update", {"d": id, "s": state, "n": line})
 
     async def remove_spawnpoint(self, id: str):
+        """Remove a spawnpoint by ID after confirming engine support for the command."""
         if id is None:
             raise ValueError("Spawnpoint ID must be a nonempty string")
         self._spawnpoint_options(id=id)
@@ -1072,6 +1126,11 @@ class Session:
     async def snapshot(
         self, variables: Iterable[str] = (), *, expressions: Iterable[str] = (), depth=0, context=0,
     ):
+        """Read paused execution, stack, variables, and requested expression results.
+
+        Expressions are evaluated in PHP and may have side effects. Read the supplied
+        variables from the requested stack depth and context.
+        """
         self._require_paused()
         frames = await self.stack()
         properties = {}
@@ -1086,6 +1145,11 @@ class Session:
         return Snapshot(self.info.id, execution, frames, properties, evaluated)
 
     async def aclose(self, *, detach=True):
+        """Close the session and its response reader, attempting detach when appropriate.
+
+        With detach=True, try to release an idle, detachable engine before closing.
+        With execution outstanding, close the connection without sending detach.
+        """
         try:
             if (not self.closed and detach and not self._execution_pending
                     and self.state in {"starting", "break", "stopping", "interactive"}

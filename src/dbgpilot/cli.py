@@ -77,6 +77,7 @@ async def _call(args):
 
 
 def main(argv=None):
+    """Run the serve or call subcommand and return its exit status."""
     parser = argparse.ArgumentParser(prog="dbgpilot")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)

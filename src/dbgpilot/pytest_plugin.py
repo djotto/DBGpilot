@@ -24,6 +24,7 @@ def dbgpilot_page(page):
 
 @pytest_asyncio.fixture
 async def dbgpilot_setup(dbgpilot_options):
+    """Yield a started setup, shutting down owned servers or closing reused clients."""
     setup = DebuggerSetup(**dbgpilot_options)
     try:
         await setup.start()
@@ -37,5 +38,6 @@ async def dbgpilot_setup(dbgpilot_options):
 
 @pytest_asyncio.fixture
 async def dbgpilot_debugger(dbgpilot_setup, dbgpilot_page):
+    """Yield a debugger for the async page and release its captures after the test."""
     async with dbgpilot_setup.debugger(dbgpilot_page) as debugger:
         yield debugger

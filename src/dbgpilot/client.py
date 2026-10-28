@@ -53,6 +53,7 @@ class Client:
         await self.aclose()
 
     async def aclose(self):
+        """Close this client and cancel its requests; server-owned sessions stay open."""
         self._closed = True
         await asyncio.gather(*(
             self._cancel_remote(id) for id, method in tuple(self._inflight.items())
@@ -60,6 +61,7 @@ class Client:
         ))
 
     async def call(self, method, **params):
+        """Await a JSON-RPC result, raising RemoteError for a server-reported failure."""
         return await self._call(uuid.uuid4().hex, method, params)
 
     def request(self, method, **params):
@@ -69,6 +71,7 @@ class Client:
         return RemoteRequest(self, method, params)
 
     async def cancel_request(self, request_id):
+        """Ask the server to cancel a request by ID without resuming PHP."""
         return await self.call("cancel_request", request_id=request_id)
 
     async def _cancel_remote(self, request_id):
@@ -169,41 +172,55 @@ class Client:
                         await writer.wait_closed()
 
     async def health(self):
+        """Return server identity, listener settings, and health metadata."""
         return await self.call("health")
 
     async def sessions(self):
+        """Return summaries of the server's retained live and closed sessions."""
         return await self.call("sessions")
 
     async def errors(self):
+        """Return recent controller errors retained by the server."""
         return await self.call("errors")
 
     async def path_mappings(self):
+        """Return the server's normalized source path mappings."""
         return await self.call("paths.mappings")
 
     async def to_remote(self, path):
+        """Ask the server to map a local path to an engine URI."""
         return await self.call("paths.to_remote", path=str(path))
 
     async def to_local(self, uri):
+        """Ask the server to map an engine file URI to a local path."""
         return await self.call("paths.to_local", path=str(uri))
 
     async def register_proxy(self, host="127.0.0.1", port=9001, *, idekey,
                              listen_port=None, multiple_sessions=True, timeout=5):
+        """Register a proxy IDE key for the server's debugger listener or supplied port."""
         return await self.call(
             "proxy.register", host=host, port=port, idekey=idekey,
             listen_port=listen_port, multiple_sessions=multiple_sessions, timeout=timeout,
         )
 
     async def unregister_proxy(self, host="127.0.0.1", port=9001, *, idekey, timeout=5):
+        """Ask the server to unregister an IDE key from a proxy."""
         return await self.call(
             "proxy.unregister", host=host, port=port, idekey=idekey, timeout=timeout,
         )
 
     async def proxy_registrations(self):
+        """Return proxy registrations owned by the server's controller."""
         return await self.call("proxy.registrations")
 
     async def wait_for_session(
         self, *, idekey=None, cookie=None, appid=None, file=None, timeout=30,
     ):
+        """Claim an unclaimed open session matching the supplied filters.
+
+        Wait up to timeout seconds and return a RemoteSession. The file filter uses
+        the server's source path mappings.
+        """
         result = await self.call("wait_for_session", idekey=idekey, cookie=cookie,
                                  appid=appid, file=file, timeout=timeout)
         return RemoteSession(self, result["session_id"], result)
@@ -226,12 +243,15 @@ class RemoteRequest:
         return self.result().__await__()
 
     async def result(self):
+        """Await the request result, propagating failures or cancellation."""
         return await self._task
 
     async def cancel(self):
+        """Request server-side cancellation without resuming the debugging session."""
         return await self.client.cancel_request(self.id)
 
     def done(self):
+        """Return whether the local request task has completed, failed, or been cancelled."""
         return self._task.done()
 
 
@@ -247,15 +267,19 @@ class RemoteSession:
         self.initial_info = initial_info
 
     async def call(self, method, **params):
+        """Await a session RPC result using this session's ID."""
         return await self.client.call("session." + method, session_id=self.id, **params)
 
     def request(self, method, **params):
+        """Start a session RPC and return an awaitable handle with explicit cancellation."""
         return self.client.request("session." + method, session_id=self.id, **params)
 
     async def info(self):
+        """Return session state, capabilities, type mappings, and known breakpoints."""
         return await self.call("info")
 
     async def events(self, *, after=0, timeout=30, limit=100):
+        """Poll retained events after a cursor, returning a batch and its next cursor."""
         return await self.call("events", after=after, timeout=timeout, limit=limit)
 
     async def close(self):
@@ -263,13 +287,16 @@ class RemoteSession:
         return await self.call("close")
 
     async def forget(self):
+        """Remove the server's retained record for this session after it has been closed."""
         return await self.call("forget")
 
     async def set_breakpoint(self, file=None, line=None, **options):
+        """Create a breakpoint using the server's source mappings and supplied options."""
         return await self.call("set_breakpoint", file=str(file) if file is not None else None,
                                line=line, **options)
 
     async def snapshot(self, variables=(), *, expressions=(), depth=0, context=0):
+        """Read stack and variable data and evaluate requested expressions while paused."""
         return await self.call("snapshot", variables=list(variables), expressions=list(expressions),
                                depth=depth, context=context)
 
@@ -283,53 +310,68 @@ class RemoteSession:
         )
 
     async def run(self, *, timeout=30):
+        """Resume execution and return the next execution result as a dictionary."""
         return await self.call("run", timeout=timeout)
 
     async def resume(self, *, timeout=30):
+        """Resume execution through run() and return its result."""
         return await self.call("resume", timeout=timeout)
 
     async def run_until_break(self, *, timeout=30):
+        """Run to a breakpoint, raising a remote execution-finished error if none is hit."""
         return await self.call("run_until_break", timeout=timeout)
 
     async def step_into(self, *, timeout=30):
+        """Advance execution into the next statement or function and return its result."""
         return await self.call("step_into", timeout=timeout)
 
     async def step_over(self, *, timeout=30):
+        """Advance past the next statement without stepping into called functions."""
         return await self.call("step_over", timeout=timeout)
 
     async def step_out(self, *, timeout=30):
+        """Run until the current function returns and report the next execution state."""
         return await self.call("step_out", timeout=timeout)
 
     async def evaluate(self, expression, *, depth=0, page=0, timeout=30):
+        """Evaluate code through the server; evaluation may have side effects in PHP."""
         return await self.call(
             "evaluate", expression=expression, depth=depth, page=page, timeout=timeout,
         )
 
     async def expr(self, expression, *, depth=0, page=0, timeout=30):
+        """Evaluate an engine-supported expression and return its property metadata."""
         return await self.call(
             "expr", expression=expression, depth=depth, page=page, timeout=timeout,
         )
 
     async def exec(self, code, *, timeout=30):
+        """Execute an engine-supported code fragment and return its success flag."""
         return await self.call("exec", code=code, timeout=timeout)
 
     async def set_spawnpoint(self, file=None, line=None, *, state="enabled"):
+        """Configure a source location where the engine may start another debug session."""
         return await self.call("set_spawnpoint", file=str(file) if file is not None else None,
                                line=line, state=state)
 
     async def get_spawnpoint(self, id):
+        """Return the engine's spawnpoint record for an ID."""
         return await self.call("get_spawnpoint", id=id)
 
     async def spawnpoints(self):
+        """Return all spawnpoint records reported by the engine."""
         return await self.call("spawnpoints")
 
     async def update_spawnpoint(self, id, *, state=None, line=None):
+        """Change a spawnpoint's state or line through the server."""
         return await self.call("update_spawnpoint", id=id, state=state, line=line)
 
     async def remove_spawnpoint(self, id):
+        """Remove a spawnpoint by ID through the server."""
         return await self.call("remove_spawnpoint", id=id)
 
     async def stdin(self, *, mode=None, data=None, timeout=5):
+        """Configure stdin redirection or send input data, supplying exactly one of them."""
         params = {"timeout": timeout}
         if mode is not None:
             params["mode"] = mode
@@ -338,25 +380,33 @@ class RemoteSession:
         return await self.call("stdin", **params)
 
     async def set_stdin(self, enabled=True, *, timeout=5):
+        """Enable or disable engine stdin redirection and return the success flag."""
         return await self.call("set_stdin", enabled=enabled, timeout=timeout)
 
     async def send_stdin(self, data, *, timeout=5):
+        """Send text or binary input to an engine with stdin redirection enabled."""
         return await self.call("send_stdin", data=data, timeout=timeout)
 
     async def interact(self, code="", *, mode=1, timeout=30):
+        """Submit interactive code or clear its buffer and return status and prompt data."""
         return await self.call("interact", code=code, mode=mode, timeout=timeout)
 
     async def property_get(self, name, **options):
+        """Read a property with the requested context, depth, paging, and target options."""
         return await self.call("property_get", name=name, **options)
 
     async def set_value(self, name, value, **options):
+        """Assign a Python scalar through the server's PHP value conversion."""
         return await self.call("set_value", name=name, value=value, **options)
 
     async def interrupt(self):
+        """Request an asynchronous break from an engine that supports interrupting PHP."""
         return await self.call("interrupt")
 
     async def detach(self):
+        """Detach the debugger and allow PHP to continue, closing the session connection."""
         return await self.call("detach")
 
     async def stop(self):
+        """Terminate PHP execution and close the debugging session."""
         return await self.call("stop")

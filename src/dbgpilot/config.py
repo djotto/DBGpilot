@@ -52,10 +52,12 @@ class SetupConfig:
             raise ValueError("path_mapper must be a PathMapper")
 
     def with_overrides(self, **values):
+        """Return a validated copy with the supplied settings replaced."""
         return replace(self, **values)
 
     @classmethod
     def from_file(cls, path, **overrides):
+        """Load TOML settings, resolve paths relative to the file, and apply overrides."""
         path = Path(path).absolute()
         with path.open("rb") as source:
             data = tomllib.load(source)

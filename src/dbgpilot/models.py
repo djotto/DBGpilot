@@ -59,6 +59,7 @@ class Property:
 
     @property
     def value_truncated(self) -> bool:
+        """Return whether the reported value size exceeds the raw bytes received."""
         return (
             self.raw_value is not None and self.size is not None
             and self.size > len(self.raw_value)
@@ -66,9 +67,11 @@ class Property:
 
     @property
     def children_truncated(self) -> bool:
+        """Return whether this property contains only part of its direct children."""
         return self.has_children and (self.page != 0 or self.total_children > len(self.children))
 
     def to_dict(self) -> dict:
+        """Return recursive property metadata with JSON-safe scalar values."""
         return {
             "name": self.name, "fullname": self.fullname, "type": self.type,
             "classname": self.classname, "value": _json_value(self.value),
@@ -84,6 +87,7 @@ class Property:
 
 
 def parse_property(node: ET.Element, type_map=None) -> Property:
+    """Parse a DBGp property, validating paging metadata and decoding scalar values."""
     for attribute in ("numchildren", "size", "page", "pagesize"):
         number = _integer(node, attribute)
         if number is not None and number < 0:
@@ -172,9 +176,11 @@ class PropertyValue:
 
     @property
     def truncated(self):
+        """Return whether fewer value bytes were received than the engine reports."""
         return len(self.data) < self.size
 
     def to_dict(self):
+        """Return value metadata with a JSON-safe data field and truncation flag."""
         return {**vars(self), "data": _json_value(self.data), "truncated": self.truncated}
 
 
@@ -187,6 +193,7 @@ class Feature:
 
     @property
     def enabled(self) -> bool:
+        """Return whether the engine supports the feature and its value is '1'."""
         return self.supported and self.value == "1"
 
 
@@ -206,10 +213,12 @@ class Frame:
     path_mapping_error: str | None = None
 
     def to_dict(self) -> dict:
+        """Return frame metadata, recursively converting input frames to dictionaries."""
         return {**vars(self), "inputs": [frame.to_dict() for frame in self.inputs]}
 
 
 def parse_frame(node: ET.Element) -> Frame:
+    """Parse a stack frame and its input frames, requiring level and line numbers."""
     level, line = _integer(node, "level"), _integer(node, "lineno")
     if level is None or line is None:
         raise ProtocolError("Invalid stack frame")
@@ -241,9 +250,11 @@ class ExecutionResult:
 
     @property
     def paused(self) -> bool:
+        """Return whether execution is in the DBGp break state."""
         return self.status == "break"
 
     def to_dict(self) -> dict:
+        """Return execution metadata with any breakpoint converted to a dictionary."""
         return {**vars(self), "breakpoint": self.breakpoint.to_dict() if self.breakpoint else None}
 
 
@@ -257,10 +268,12 @@ class InteractiveResult:
     reason: str = "ok"
 
     def to_dict(self):
+        """Return a copy of the interactive response fields."""
         return vars(self).copy()
 
 
 def parse_interaction(node):
+    """Parse interactive status, requiring valid buffering and prompt attributes."""
     if node.get("more") not in {"0", "1"} or node.get("prompt") is None:
         raise ProtocolError("interact response requires more and prompt attributes")
     if node.get("status") is None:
@@ -287,6 +300,7 @@ class ProxyRegistration:
 
 
 def proxy_error(node, command=None):
+    """Build a ProxyError from proxy XML, preserving the code and response details."""
     error = node.find("{*}error")
     error = error if error is not None else node
     message = error.find("{*}message")
@@ -299,6 +313,7 @@ def proxy_error(node, command=None):
 
 
 def execution_result(node: ET.Element) -> ExecutionResult:
+    """Extract execution status, location, exception, and breakpoint from a response."""
     message = node.find("{*}message")
     bp = node.find("{*}breakpoint")
     return ExecutionResult(
@@ -334,10 +349,12 @@ class Breakpoint:
     path_mapping_error: str | None = None
 
     def to_dict(self):
+        """Return a copy of the breakpoint fields."""
         return vars(self).copy()
 
 
 def parse_breakpoint(node: ET.Element) -> Breakpoint:
+    """Parse a breakpoint record, requiring an ID and nonempty state."""
     if not node.get("id") or not node.get("state", "enabled"):
         raise ProtocolError("Breakpoint requires an ID and nonempty state")
     expression = node.find("{*}expression")
@@ -369,10 +386,12 @@ class Spawnpoint:
     path_mapping_error: str | None = None
 
     def to_dict(self):
+        """Return spawnpoint fields with a separate copy of the engine attributes."""
         return {**vars(self), "attributes": self.attributes.copy()}
 
 
 def parse_spawnpoint(node: ET.Element) -> Spawnpoint:
+    """Parse a spawnpoint, validating its ID, state, and fixed spawn type."""
     if not node.get("id") or node.get("state") not in {"enabled", "disabled"}:
         raise ProtocolError("Spawnpoint requires an ID and valid state")
     if node.get("type", "spawn") != "spawn":
@@ -417,6 +436,7 @@ class NotificationMessage:
 
 
 def parse_notification(node: ET.Element) -> NotificationEvent:
+    """Parse notification XML, body bytes, and optional breakpoint or message details."""
     bp = node.find("{*}breakpoint")
     message = node.find("{*}message")
     return NotificationEvent(
@@ -469,6 +489,7 @@ class Snapshot:
     expressions: dict[str, Property | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        """Return snapshot metadata with nested result objects converted to dictionaries."""
         return {
             "session_id": self.session_id, "execution": self.execution.to_dict(),
             "frames": [frame.to_dict() for frame in self.frames],

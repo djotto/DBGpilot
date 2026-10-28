@@ -140,10 +140,12 @@ class Server:
 
     @property
     def url(self):
+        """Return the API origin, using a connectable host for wildcard listeners."""
         host = {"0.0.0.0": "127.0.0.1", "::": "::1"}.get(self.host, self.host)
         return f"http://{'[' + host + ']' if ':' in host else host}:{self.port}"
 
     async def start(self):
+        """Start the API and debugger listeners once, returning this server."""
         async with self._start_lock:
             return await self._start()
 
@@ -198,6 +200,7 @@ class Server:
                         self.slots.release()
 
                 def close_connections(self):
+                    """Shut down and close all tracked client sockets."""
                     with self.connections_lock:
                         connections = tuple(self.connections)
                     for connection in connections:
@@ -298,6 +301,7 @@ class Server:
                 "interaction": json_value(session.last_interaction)}
 
     def health(self):
+        """Return API identity, listener settings, live session count, and mappings."""
         return {"status": "ok", "protocol": "dbgpilot/1", "url": self.url,
                 "version": __version__,
                 "instance_id": self.instance_id,
@@ -529,6 +533,11 @@ class Server:
         )
 
     async def rpc(self, request):
+        """Dispatch a JSON-RPC request and return its result or structured error.
+
+        Track the request ID for cancellation and bound execution by the server's
+        maximum wait. Shutdown cancellation propagates to the caller.
+        """
         task = asyncio.current_task()
         self._requests.add(task)
         request_id = None
@@ -576,6 +585,7 @@ class Server:
                     del self._request_ids[request_id]
 
     async def aclose(self):
+        """Cancel active requests and close sessions, listeners, and HTTP connections."""
         if self._closing:
             return
         self._closing = True
@@ -648,6 +658,7 @@ class _Handler(BaseHTTPRequestHandler):
         return True
 
     def do_GET(self):
+        """Authorize and serve the health endpoint, rejecting other paths."""
         if not self._authorize():
             return
         if self.path != "/health":
@@ -656,6 +667,7 @@ class _Handler(BaseHTTPRequestHandler):
         self._dispatch({"jsonrpc": "2.0", "id": "health", "method": "health"}, plain=True)
 
     def do_POST(self):
+        """Authorize, validate, and dispatch a bounded JSON request to the RPC endpoint."""
         if not self._authorize():
             return
         if self.path != "/rpc":

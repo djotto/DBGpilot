@@ -38,6 +38,7 @@ class ProxyClient:
             raise ValueError("IDE key must be a nonempty string")
 
     async def register(self, listen_port, idekey, *, multiple_sessions=True):
+        """Advertise a debugger listener port for an IDE key and return the proxy response."""
         self._port(listen_port)
         self._key(idekey)
         if not isinstance(multiple_sessions, bool):
@@ -48,6 +49,7 @@ class ProxyClient:
         )
 
     async def unregister(self, idekey):
+        """Remove an IDE key's proxy registration and return the proxy response."""
         self._key(idekey)
         return await self._exchange("proxystop", idekey, {"k": idekey})
 

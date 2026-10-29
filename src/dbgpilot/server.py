@@ -296,7 +296,7 @@ class Server:
                                           "type": type(event).__name__, "data": json_value(event)})
                     if isinstance(event, ClosedEvent):
                         record.closed_at = self._loop.time()
-                    self._prune()
+                        self._prune()
                     self._condition.notify_all()
                 if isinstance(event, ClosedEvent):
                     return

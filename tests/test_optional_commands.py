@@ -62,7 +62,7 @@ async def test_expr_decodes_paged_properties_with_depth_and_type_maps():
         result = await task
         assert result.value == 42 and result.type == "whole" and result.common_type == "int" and result.page == 3
         assert session.state == "break" and not session._execution_pending
-        assert isinstance(await session.next_event(timeout=1), StoppedEvent)
+        assert session._events.empty(), "An on-time expr reply must not emit another stop"
 
 
 @pytest.mark.parametrize("command", ["expr", "exec"])
@@ -105,7 +105,7 @@ async def test_code_execution_interleaves_events_and_guards_overlapping_operatio
         assert (await session.next_event(timeout=1)).name == "custom"
         await successful_reply(engine, request)
         await task
-        assert isinstance(await session.next_event(timeout=1), StoppedEvent)
+        assert session._events.empty(), "An on-time evaluation reply must not emit another stop"
         assert session.state == "break"
 
 

@@ -83,7 +83,7 @@ async def test_evaluation_blocks_overlapping_execution_and_dispatches_interleave
         assert session.state == "break"
         assert await session.next_event(timeout=1) == StreamEvent("stderr", b"output")
         assert (await session.next_event(timeout=1)).name == "custom"
-        assert isinstance(await session.next_event(timeout=1), StoppedEvent)
+        assert session._events.empty(), "An on-time evaluation reply must not emit another stop"
 
 
 @pytest.mark.parametrize("cancel", [True, False])

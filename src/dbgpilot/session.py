@@ -316,6 +316,8 @@ class Session:
         if expected is None:
             raise ProtocolError(f"Unknown transaction ID: {transaction}")
         name, future = pending if pending else (expected, None)
+        # Cancellation can reach the future before command() records abandonment.
+        abandoned = future is None or future.cancelled()
         if node.get("command") != expected:
             raise ProtocolError(f"Response command does not match transaction {transaction}")
         error = node.find("{*}error")
@@ -329,21 +331,21 @@ class Session:
                 name, code, "".join(message.itertext()) if message is not None else "",
                 attributes=error.attrib, xml=ET.tostring(error, encoding="unicode"),
             )
-            self._finish_execution(transaction, node, failed=True)
+            self._finish_execution(transaction, node, failed=True, abandoned=abandoned)
             self._pending.pop(transaction, None)
             self._abandoned.pop(transaction, None)
             self._eof_commands.pop(transaction, None)
             if future is not None and not future.done():
                 future.set_exception(result_error)
             return
-        self._finish_execution(transaction, node)
+        self._finish_execution(transaction, node, abandoned=abandoned)
         self._pending.pop(transaction, None)
         self._abandoned.pop(transaction, None)
         self._eof_commands.pop(transaction, None)
         if future is not None and not future.done():
             future.set_result(node)
 
-    def _finish_execution(self, transaction, node, *, failed=False):
+    def _finish_execution(self, transaction, node, *, failed=False, abandoned=False):
         command = node.get("command")
         feature_arguments = self._feature_requests.pop(transaction, None)
         if feature_arguments is not None and not failed:
@@ -409,7 +411,8 @@ class Session:
                 self.state = previous
         if not failed:
             self._update_state(node)
-        if previous is not None and command in _EVALUATIONS and node.get("status") is None:
+        if (abandoned and previous is not None
+                and command in _EVALUATIONS and node.get("status") is None):
             # Late/cancelled evaluation replies restore inspectability too.
             if self.state == "break":
                 self._emit(StoppedEvent(self.last_result))

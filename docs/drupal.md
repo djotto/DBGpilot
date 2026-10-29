@@ -102,6 +102,22 @@ runtime versions, observed frames, source locations, and successful scenarios.
 `test-results/drupal11.png` captures the seeded front page; JUnit is written by
 the full check command.
 
+Drupal browser diagnostics are recorded automatically on every run, including
+`ddev drupal-test`, the full check, and ordinary pytest runs that select Drupal.
+Each run gets its own directory under `test-results/drupal-diagnostics/`, with
+CPU/memory and available I/O counters sampled across the selected suite. Each
+Drupal case saves a Playwright `trace.zip`, a timestamped network/console/lifecycle
+log (`events.jsonl`), and final page state, HTML and screenshot. A failed
+`page.goto()` also captures `navigation-error.json`, HTML and a screenshot
+before re-raising the original error; the JSON includes outstanding requests.
+Successful traces are retained for timing comparisons. The JUnit testcase's
+`drupal_diagnostics` property identifies its artifact directory.
+
+Open a saved trace on a host with Playwright installed using
+`playwright show-trace PATH/trace.zip`.
+Artifacts are ignored by Git and excluded from distributions. Diagnostic capture
+does not retry navigation, increase test deadlines, or alter debugging behavior.
+
 A useful observed detail: Drupal renders these controllers within PHP Fibers.
 At these stops Xdebug reports the active render-Fiber stack, ending at its Fiber
 entry; the parent Symfony HttpKernel stack is not included. DBGpilot preserves

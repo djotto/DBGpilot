@@ -824,7 +824,7 @@ class Session:
                 "property_set expects an engine-native string or bytes; "
                 "use set_value for Python values"
             )
-        raw = expression.encode("utf-8") if isinstance(expression, str) else expression
+        raw = expression.encode("utf-8", "surrogateescape") if isinstance(expression, str) else expression
         node = await self.command("property_set", {
             "n": name, "c": context, "d": depth, "t": property_type, "l": len(raw), "a": address,
         }, raw)

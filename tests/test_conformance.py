@@ -188,6 +188,46 @@ async def test_non_php_eval_depth_and_engine_native_assignment():
         assert await assignment
 
 
+@pytest.mark.parametrize("as_text", [False, True], ids=["bytes", "text"])
+@pytest.mark.parametrize("payload", [
+    pytest.param(b"'hello'", id="ascii"),
+    pytest.param("'café'".encode("utf-8"), id="utf8"),
+    pytest.param(b"'\xff'", id="non-utf8"),
+    pytest.param("'café".encode("utf-8") + b"\x80\0\xff'", id="mixed-bytes"),
+])
+async def test_property_set_preserves_payload_bytes_and_byte_length(payload, as_text):
+    # surrogateescape preserves PHP bytes that cannot be decoded as UTF-8.
+    expression = payload.decode("utf-8", "surrogateescape") if as_text else payload
+    async with fake_session() as (_, session, engine):
+        await pause(session, engine)
+        assignment = asyncio.create_task(session.property_set(
+            "$value", expression, property_type="string", context=1, depth=2, address="0xabc",
+        ))
+        incoming = asyncio.create_task(engine.next_request())
+        try:
+            done, _ = await asyncio.wait(
+                (assignment, incoming), return_when=asyncio.FIRST_COMPLETED,
+            )
+            if assignment in done:
+                # Surface encoding errors directly rather than a peer timeout.
+                await assignment
+                pytest.fail("Assignment completed before the engine received its command")
+            request = await incoming
+            assert request.name == "property_set"
+            assert request.arguments == {
+                "n": "$value", "c": "1", "d": "2", "t": "string",
+                "l": str(len(payload)), "a": "0xabc",
+            }
+            assert base64.b64decode(request.data, validate=True) == payload
+            await engine.respond(request, success=1)
+            assert await assignment is True
+            assert session.state == "break" and not session.closed
+        finally:
+            assignment.cancel()
+            incoming.cancel()
+            await asyncio.gather(assignment, incoming, return_exceptions=True)
+
+
 async def test_php_eval_depth_override_is_explicit():
     async with fake_session(eval_depth_supported=True) as (_, session, engine):
         await pause(session, engine)

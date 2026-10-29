@@ -46,7 +46,10 @@ connect to the proxy's separate engine port. See the
 
 An optional bearer token can be configured with `DBGPILOT_TOKEN` or `--token`.
 Pass the same token to `Client(..., token=...)` or the CLI. Listening beyond
-loopback requires a token. HTTP is intended for local/trusted transports; use
+loopback, or using a hostname other than `localhost`, requires a token.
+Hostnames resolve during startup; the listener uses the resolved IPv4 or IPv6
+address and keeps the configured hostname in its advertised URL.
+HTTP is intended for local/trusted transports; use
 tunneling for remote connections. The API accepts JSON from script clients,
 does not enable CORS, and rejects browser-origin requests. Playwright's Python
 client or server-side `fetch` can call it; page JavaScript is not the API client.

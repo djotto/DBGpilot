@@ -112,8 +112,13 @@ class Server:
         if type(max_http_connections) is not int or max_http_connections < 1:
             raise ValueError("max_http_connections must be a positive integer")
         self.max_http_connections = max_http_connections
-        if host != "localhost" and not ipaddress.ip_address(host).is_loopback and not token:
-            raise ValueError("A non-loopback API listener requires a token")
+        if not token and host != "localhost":
+            try:
+                loopback = ipaddress.ip_address(host).is_loopback
+            except ValueError:
+                loopback = False
+            if not loopback:
+                raise ValueError("A non-loopback API listener requires a token")
         self.host, self.port, self.token = host, port, token
         self.instance_id = uuid.uuid4().hex
         if controller is not None and path_mappings is not None:
@@ -162,6 +167,11 @@ class Server:
                 raise ConnectionClosed("Server closed during startup")
             if self._proxy_settings is not None:
                 await self.controller.register_proxy(**self._proxy_settings)
+            addresses = await self._loop.getaddrinfo(
+                self.host, self.port, type=socket.SOCK_STREAM,
+            )
+            if self._closing:
+                raise ConnectionClosed("Server closed during startup")
             owner = self
 
             class Handler(_Handler):
@@ -172,11 +182,14 @@ class Server:
             class HTTPServer(ThreadingHTTPServer):
                 """Limit concurrent connections and track sockets for shutdown."""
 
-                address_family = socket.AF_INET6 if ":" in owner.host else socket.AF_INET
                 request_queue_size = 64
                 slots = threading.BoundedSemaphore(owner.max_http_connections)
                 connections = set()
                 connections_lock = threading.Lock()
+
+                def __init__(self, address, family):
+                    self.address_family = family
+                    super().__init__(address, Handler)
 
                 def process_request(self, request, address):
                     if owner._closing or not self.slots.acquire(blocking=False):
@@ -209,7 +222,21 @@ class Server:
                             connection.shutdown(socket.SHUT_RDWR)
                         connection.close()
 
-            self._http = HTTPServer((self.host, self.port), Handler)
+            bind_error = OSError("No usable addresses for API listener")
+            for family, _, _, _, address in addresses:
+                if family not in {socket.AF_INET, socket.AF_INET6}:
+                    continue
+                if not self.token and not ipaddress.ip_address(address[0]).is_loopback:
+                    raise ValueError("A non-loopback API listener requires a token")
+                try:
+                    # Bind the resolved address without a second hostname lookup.
+                    self._http = HTTPServer(address, family)
+                except OSError as error:
+                    bind_error = error
+                else:
+                    break
+            else:
+                raise bind_error
             self._http.daemon_threads = True
             self.port = self._http.server_address[1]
             self._thread = threading.Thread(

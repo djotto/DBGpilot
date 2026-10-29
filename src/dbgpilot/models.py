@@ -101,7 +101,7 @@ def parse_property(node: ET.Element, type_map=None) -> Property:
     value_node = node.find("{*}value")
     raw = None
     value = None
-    if not has_children and common not in {"array", "object", "null", "uninitialized"}:
+    if not has_children and common not in {"array", "hash", "object", "null", "uninitialized"}:
         raw = content_bytes(value_node if value_node is not None else node)
         try:
             if common in {"int", "integer"}:

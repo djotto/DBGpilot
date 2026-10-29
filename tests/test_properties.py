@@ -6,7 +6,7 @@ from hypothesis import given, strategies as st
 import pytest
 
 from dbgpilot import ProtocolError
-from dbgpilot.models import parse_property
+from dbgpilot.models import TypeMapping, parse_property
 from .helpers import xml
 
 
@@ -41,6 +41,67 @@ def test_scalar_types(kind, text, expected):
     prop = parse_property(node)
     assert prop.value == expected
     assert prop.type == kind
+
+
+def empty_property(kind, *, extended=False):
+    node = xml("property", type=kind)
+    if kind == "array":
+        node.set("children", "0")
+        node.set("numchildren", "0")
+    else:
+        node.set("size", "0")
+    if extended:
+        for field in ("name", "fullname"):
+            child = xml(field, encoding="base64")
+            child.text = base64.b64encode(b"$value").decode()
+            node.append(child)
+        if kind == "string":
+            node.append(xml("value", encoding="base64"))
+    else:
+        node.set("name", "$value")
+        node.set("fullname", "$value")
+        if kind == "string":
+            node.set("encoding", "base64")
+    return node
+
+
+@pytest.mark.parametrize("extended", [False, True], ids=["standard", "extended"])
+@pytest.mark.parametrize("mapped", [False, True], ids=["no-typemap", "typemap"])
+def test_empty_array_has_no_scalar_value_with_or_without_typemap(mapped, extended):
+    mappings = {"array": TypeMapping("array", "hash")} if mapped else None
+    prop = parse_property(empty_property("array", extended=extended), mappings)
+    assert prop.type == "array"
+    assert prop.name == prop.fullname == "$value"
+    assert prop.common_type == ("hash" if mapped else None)
+    assert prop.value is None
+    assert prop.raw_value is None
+    assert prop.children == () and prop.total_children == 0 and not prop.has_children
+    assert prop.to_dict()["value"] is None
+
+
+@pytest.mark.parametrize("extended", [False, True], ids=["standard", "extended"])
+@pytest.mark.parametrize("mapped", [False, True], ids=["no-typemap", "typemap"])
+def test_empty_string_remains_a_scalar_with_or_without_typemap(mapped, extended):
+    mappings = {"string": TypeMapping("string", "string")} if mapped else None
+    prop = parse_property(empty_property("string", extended=extended), mappings)
+    assert prop.type == "string"
+    assert prop.name == prop.fullname == "$value"
+    assert prop.value == "" and prop.raw_value == b""
+    assert prop.to_dict()["value"] == ""
+
+
+def test_typemap_preserves_nested_empty_arrays_and_empty_strings():
+    node = xml("property", type="array", children=1, numchildren=2)
+    node.extend([empty_property("array"), empty_property("string")])
+    prop = parse_property(node, {
+        "array": TypeMapping("array", "hash"),
+        "string": TypeMapping("string", "string"),
+    })
+    assert prop.value is None and prop.raw_value is None
+    assert prop.has_children and prop.total_children == len(prop.children) == 2
+    array, string = prop.children
+    assert array.value is None and array.raw_value is None
+    assert string.value == "" and string.raw_value == b""
 
 
 @pytest.mark.parametrize("kind,text", [("int", "oops"), ("bool", "yes"), ("float", "oops")])

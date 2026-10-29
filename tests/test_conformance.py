@@ -243,6 +243,48 @@ async def test_core_wrappers_decode_status_stack_depth_and_type_maps():
             assert result.common_type == "int"
 
 
+@pytest.mark.parametrize("method,command", [
+    ("property_get", "property_get"), ("context", "context_get"), ("evaluate", "eval"),
+])
+async def test_loading_typemap_preserves_empty_arrays_and_strings(method, command):
+    async with fake_session() as (_, session, engine):
+        await pause(session, engine)
+        for mapped in (False, True):
+            if mapped:
+                pending = asyncio.create_task(session.typemap_get())
+                request = await engine.next_request()
+                assert request.name == "typemap_get"
+                await engine.respond(request, payload=[
+                    xml("map", name="array", type="hash"),
+                    xml("map", name="string", type="string"),
+                ])
+                await pending
+                assert session.type_map["array"].common_type == "hash"
+            for kind in ("array", "string"):
+                args = () if method == "context" else ("$value",)
+                pending = asyncio.create_task(getattr(session, method)(*args))
+                request = await engine.next_request()
+                assert request.name == command
+                prop = xml("property", name="$value", fullname="$value", type=kind)
+                if kind == "array":
+                    prop.set("children", "0")
+                    prop.set("numchildren", "0")
+                else:
+                    prop.set("size", "0")
+                    prop.set("encoding", "base64")
+                await engine.respond(request, payload=[prop])
+                result = await pending
+                if method == "context":
+                    assert len(result) == 1
+                    result = result[0]
+                assert result.type == kind
+                if kind == "array":
+                    assert result.value is None, "An empty array must not become an empty string"
+                    assert result.raw_value is None
+                else:
+                    assert result.value == "" and result.raw_value == b""
+
+
 @pytest.mark.parametrize("value", [None, "bad", "-1"])
 async def test_invalid_stack_depth_is_rejected(value):
     async with fake_session() as (_, session, engine):

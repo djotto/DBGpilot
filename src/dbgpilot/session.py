@@ -747,7 +747,13 @@ class Session:
         if self.state == "stopping":
             self._require_paused()
         node = await self.command("context_names", {"d": depth})
-        return {int(child.get("id")): child.get("name", "") for child in node.findall("{*}context")}
+        try:
+            return {
+                int(child.get("id", "")): child.get("name", "")
+                for child in node.findall("{*}context")
+            }
+        except ValueError as error:
+            raise ProtocolError("Missing or invalid context ID") from error
 
     async def context(self, *, context=0, depth=0):
         """Read the properties in a context at the requested stack depth while paused."""

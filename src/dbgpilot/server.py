@@ -533,8 +533,8 @@ class Server:
             params["data"] = binary_value(params["data"])
         if name == "interact" and "code" in params:
             params["code"] = binary_value(params["code"])
-        if name in {"expr", "exec"}:
-            key = "expression" if name == "expr" else "code"
+        if name in {"evaluate", "expr", "exec"}:
+            key = "code" if name == "exec" else "expression"
             if key in params:
                 params[key] = binary_value(params[key])
         if name in EXECUTION_METHODS:

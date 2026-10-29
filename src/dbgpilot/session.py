@@ -857,7 +857,7 @@ class Session:
             name, expression, context=context, depth=depth, address=address,
         )
 
-    async def evaluate(self, expression: str, *, depth=0, page=0, timeout=_DEFAULT):
+    async def evaluate(self, expression: str | bytes, *, depth=0, page=0, timeout=_DEFAULT):
         """Evaluate PHP code; unlike property reads, this can have side effects."""
         self._require_paused()
         if depth < 0:

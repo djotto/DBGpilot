@@ -59,6 +59,8 @@ try {
     test.use({xdebugPort:9003,xdebugPathMappings:[{local:'/work',remote:'file:///app'}]});
     test('typed consumer',async({page,xdebug})=>{
       const paused=await xdebug.goto(page,'http://localhost/',{variables:['$x']});
+      const canEvaluate:boolean=paused.session.supportsCommand('eval');
+      const canInterrupt:boolean=paused.session.supportsAsync;void canEvaluate;void canInterrupt;
       const response=await paused.finished();if(response) expect(response.status()).toBe(200);
       await paused.session.setVariable('$x',42n);
     });

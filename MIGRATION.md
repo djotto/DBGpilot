@@ -36,6 +36,9 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
 
 - [x] Finish relevant debugger API coverage: breakpoint inventories/options,
   features, contexts, source/value retrieval, termination semantics and metadata.
+- [x] Port feature negotiation safeguards: encoding/base64 requirements,
+  unavailable-command guards, optional feature rejection, cached capability
+  helpers and late feature acknowledgement updates. See `features.test.js`.
 - [x] Port local/remote source mappings and their cross-platform regression cases.
 - [x] Add per-action capture coordination: precise request selection, action
   failure propagation, separate action/debugger deadlines, and bounded cleanup.
@@ -160,3 +163,18 @@ allowlist now names only JS modules and the standalone example, and the clean
 20-file package check passes. The Node-only DDEV setup entry point also passed.
 Scenario-level audit items above remain open; archiving Python does not claim
 that every historical assertion has been reproduced.
+
+Feature negotiation migration: startup now discovers command availability,
+negotiates encoding before PHP evaluation, tolerates optional settings rejected
+with success=0 or unsupported-command/argument errors, and enables supported
+notification/breakpoint detail settings. Cached command/async helpers and
+late capability acknowledgements remain accurate. Regression cases include
+rejection without PHP state changes, required-encoding failure and listener
+recovery, boolean wire values, and cleanup when detach is unavailable. Runtime
+matrix assertions verify these helpers and encoding guards against real Xdebug.
+
+Validation for the feature safeguards: 199 Node regressions (including 33
+feature cases), source TypeScript declarations, all 16 browser outcomes, six
+PHP/Xdebug combinations, eight Drupal checks and five stress checks pass.
+The package check verifies the final 20-file tarball with fresh CJS/ESM and
+installed TypeScript consumers, including the new capability helpers.

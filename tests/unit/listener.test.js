@@ -21,7 +21,10 @@ async function engine(t,listener,{idekey = 'test',method = 'GET',uri = '/checkou
       const end = buffer.indexOf(0); if (end < 0) break;
       const request = parseCommand(buffer.subarray(0,end+1)); buffer = buffer.subarray(end+1);
       commands.push(request);
-      if (request.name === 'feature_get') socket.write(frame(response(request,'supported="1"',request.args.n === 'breakpoint_types' ? 'line conditional exception call return':'0')));
+      if (request.name === 'feature_get') {
+        const values = {encoding:failFeature ? 'ASCII':'UTF-8',data_encoding:'base64',supports_async:'0',supports_postmortem:'0',breakpoint_types:'line conditional exception call return'};
+        socket.write(frame(response(request,'supported="1"',values[request.args.n] ?? '1')));
+      }
       else if (request.name === 'feature_set') socket.write(frame(response(request,`success="${failFeature ? 0:1}"`)));
       else if (request.name === 'eval') {
         seenEval(request);
@@ -67,10 +70,16 @@ test('unknown IDE keys detach without consuming an owner waiter',async t => {
   const waiting = xdebug.waitForSession({timeout:1000}); await engine(t,listener);
   assert.equal((await waiting).init.idekey,'test');
 });
-test('preparation failures reach the waiting test immediately',async t => {
+test('encoding negotiation failures reach the waiter and the listener accepts the next engine',async t => {
   const listener = await setup(t); const xdebug = owner(t,listener);
-  const waiting = assert.rejects(xdebug.waitForSession({timeout:1000}),/did not accept feature/);
-  await engine(t,listener,{failFeature:true}); await waiting;
+  const waiting = assert.rejects(xdebug.waitForSession({timeout:1000}),/must support UTF-8/);
+  const failed = await engine(t,listener,{failFeature:true});
+  const closed = once(failed.socket,'close');
+  await waiting;await closed;
+  assert.equal(failed.commands.some(command => command.name === 'eval'),false);
+  const next = xdebug.waitForSession({timeout:1000});
+  await engine(t,listener);
+  assert.equal((await next).supportsCommand('eval'),true);
 });
 test('aborted wait does not claim the next matching session',async t => {
   const listener = await setup(t); const xdebug = owner(t,listener); const abort = new AbortController();

@@ -36,6 +36,12 @@ for (const target of targets) {
       const done = new Promise((resolve,reject) => {process.once('error',reject);process.once('close',code => resolve(code));}); done.catch(() => {});
       const session = await waiting;
       assert.equal(session.init.engine.version,target.xdebug); assert.equal(session.request.method,'CLI');
+      assert.equal(session.supportsAsync,false);
+      for (const command of ['eval','detach','source','property_get','property_set']) assert.equal(session.supportsCommand(command),true,command);
+      assert.match(session.capabilities.encoding.value,/^(?:utf-?8|iso-?8859-?1|latin-?1)$/i);
+      await assert.rejects(session.featureSet('encoding','ASCII'),TypeError);
+      await assert.rejects(session.featureSet('data_encoding','none'),TypeError);
+      record.capabilities = {encoding:session.capabilities.encoding,dataEncoding:session.capabilities.data_encoding,supportsAsync:session.supportsAsync};
       await session.setBreakpoint('C:\\Matrix\\compatibility é.php',line,{condition:'$discount === 10'});
       const stopped = await session.runUntilBreak(); assert.equal(stopped.localFile,'C:\\Matrix\\compatibility é.php');
       const snapshot = await session.snapshot({variables:['$discount','$binary','$bigint']});

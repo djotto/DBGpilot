@@ -7,6 +7,9 @@ test('typed fixture',async ({page,xdebug}) => {
   await paused.session.setVariable('$x',42n);await paused.session.detach();await paused.finished();
 });
 async function standalone(session:Session) {
+  const canEvaluate:boolean = session.supportsCommand('eval');
+  const canInterrupt:boolean = session.supportsAsync;
+  void canEvaluate;void canInterrupt;
   const value = await session.getVariable('$x');
   if (value instanceof PartialValue) console.log(value.totalChildren);
   const paths = new PathMapper([{local:'/work',remote:'file:///app'}]);

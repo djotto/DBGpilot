@@ -9,7 +9,7 @@ Counts of parametrized pytest cases are not a migration target.
 | Python test file | Disposition | JavaScript work |
 | --- | --- | --- |
 | `test_protocol.py` | Partial | Framing, fragmentation, quoting, binary payloads, namespace/length validation migrated to `protocol.test.js`; expand randomized/backpressure cases. |
-| `test_sessions.py` | Partial | State, operation guards, errors, late replies and explicit release in `session.test.js`; complete remaining session APIs. |
+| `test_sessions.py` | Partial | State, operation guards, errors, late replies and explicit release in `session.test.js`; command availability and feature negotiation in `features.test.js`; remaining scenario audit pending. |
 | `test_properties.py` | Partial | Binary/extended values, partial results, metadata, integers and nonfinite values in `values.test.js`; remaining format cases pending. |
 | `test_evaluation_events.py` | Migrated/adapted | On-time evaluations do not duplicate stops or overflow the retained queue; abandoned success/error restores the pause and publishes recovery; expr/exec and HTTP replay portions excluded. |
 | `test_cancellation.py` | Migrated/adapted | AbortSignal execution/wait/event cancellation retains engine ownership and future events; RPC IDs/tombstones/client reconnect portions retire. |
@@ -19,7 +19,7 @@ Counts of parametrized pytest cases are not a migration target.
 | `test_review_browser.py` | Adapt | Navigation/POST/AJAX, copied snapshots, late stops, action/setup failures, deadlines and cancellation covered; fine-grained cleanup races still under review. |
 | `test_browser.py` | Adapt | Core browser behaviours started in `checkout.spec.js`; replace daemon connections with fixture ownership. |
 | `test_integration.py` | Port | Complete live command coverage and engine error/termination assertions. |
-| `test_conformance.py` | Port | Port relevant PHP/Xdebug wire and data cases; no HTTP transport requirement. |
+| `test_conformance.py` | Partial | Encoding/base64 constraints, command capability gates, optional negotiation failures, refresh and late acknowledgements migrated to `features.test.js`; existing wire/data coverage in `conformance.test.js`; remaining per-scenario audit pending. |
 | `test_context_names.py` | Migrated | Valid/missing/empty/nonnumeric/fractional IDs and caller validation in `api.test.js`; HTTP duplication retires with the service. |
 | `test_paths.py` | Migrated/adapted | 35 mapping tests cover Windows/UNC, byte/Unicode URIs, traversal, normalized roots, case policies, round trips and overrides. TOML discovery adapts to JS options; see exceptions. |
 | `test_path_mapping_sessions.py` | Migrated/adapted | Mapped init/results/stack inputs/snapshot fallback/source/breakpoints/notifications in unit and actual Windows-to-Linux browser cases; HTTP/CLI/reconnect and optional spawnpoint portions excluded. |

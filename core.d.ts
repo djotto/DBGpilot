@@ -74,6 +74,7 @@ export class Session extends EventEmitter {
   readonly id:number;readonly connection:Connection;readonly init:Record<string,unknown>;readonly info:Record<string,unknown>;
   readonly paths:PathMapper;readonly label:string;readonly state:string;readonly lastResult:ExecutionResult;
   readonly knownBreakpoints:Record<string,Breakpoint>;readonly capabilities:Record<string,Feature>;
+  readonly supportsAsync:boolean;supportsCommand(name:string):boolean;
   setBreakpoint(file?:string,line?:number,options?:BreakpointOptions):Promise<string>;
   setExceptionBreakpoint(exception?:string):Promise<string>;
   getBreakpoint(id:string):Promise<Breakpoint>;breakpoints():Promise<Breakpoint[]>;

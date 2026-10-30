@@ -2,6 +2,10 @@
 
 ## JavaScript 0.1.0 — unreleased
 
+- Port feature negotiation safeguards: discover command support, expose cached
+  capability helpers, preserve encoding/base64 requirements, tolerate unsupported
+  optional settings and retain late feature replies.
+
 - Replace the Python controller with the Playwright fixture and same-process Node core.
 - Include CJS/ESM exports, TypeScript declarations, request capture, PHP value and
   source mapping APIs, bounded event queues and automatic session cleanup.

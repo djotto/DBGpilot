@@ -1,5 +1,12 @@
 # DBGpilot conversation and implementation handoff
 
+Current direction (2026-10-30): the user corrected the consuming environment
+to JavaScript Playwright, excluded cross-script debugging, and authorized the
+`migration/playwright` branch to replace the Python tool with the JS fixture.
+[MIGRATION.md](MIGRATION.md) is the current scope and progress record. The older
+keep-Python and persistent-daemon decisions below are historical and superseded
+for this migration. Keep the existing Python sources as a reference until cutover.
+
 Snapshot date: 2026-10-28. Workspace: `/Users/djotto/projects/DBGpilot`.
 Purpose: sufficient context for another LLM to continue this project without
 repeating research, undoing agreed architecture, or mistaking planned work for

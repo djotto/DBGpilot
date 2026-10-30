@@ -2,10 +2,14 @@ Important note: This project is completely vibe-coded, even the docs. I haven't
 even opened most of the files here, and if you use it it's completely at your
 own risk. All the "tests" are LLM-written, too. They mean nothing.
 
-The goal is to extend pytest with xdebug controls, so it can use Playwright and
-xdebug simultaneously. There are other potential uses (eg a command-line tool
-to allow LLMs to interact with xdebug), but controlling Playwright and xdebug
-from the same Python script was my main goal.
+This branch is migrating DBGpilot to JavaScript Playwright tests and ad hoc
+scripts, using a test-owned Xdebug fixture. Cross-script debugging is outside
+the replacement's scope. See [MIGRATION.md](MIGRATION.md) for current progress,
+test commands and the coverage plan, and [the fixture guide](playwright-xdebug/README.md)
+for the new API. Run the fast JavaScript checks with `npm ci && npm test`.
+
+The Python implementation and documentation below remain as a reference until
+the relevant coverage has migrated and the JavaScript replacement is ready.
 
 # DBGpilot
 

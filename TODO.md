@@ -1,5 +1,10 @@
 # DBGpilot TODO
 
+The active JavaScript replacement work is tracked in [MIGRATION.md](MIGRATION.md)
+on `migration/playwright`. Its test-owned sessions supersede this document's
+earlier Python/pytest and cross-script daemon direction. The entries below are
+retained as historical implementation and test-coverage references during migration.
+
 Audit baseline: DBGpilot 0.1.0, 2026-10-26, compared with
 [DBGp 1.0, draft 22](https://xdebug.org/docs/dbgp).
 

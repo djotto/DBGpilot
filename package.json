@@ -1,0 +1,11 @@
+{
+  "name": "dbgpilot-migration",
+  "private": true,
+  "workspaces": ["playwright-xdebug"],
+  "scripts": {
+    "test": "npm test --workspace=playwright-xdebug",
+    "test:browser": "npm run test:browser --workspace=playwright-xdebug",
+    "test:drupal": "npm run test:drupal --workspace=playwright-xdebug"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -6,6 +6,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .hypothesis/
+node_modules/
 test-results/
 playwright-report/
 fixtures/drupal11/vendor/

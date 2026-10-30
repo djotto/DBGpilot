@@ -21,7 +21,8 @@ async function engine(t,listener,{idekey = 'test',method = 'GET',uri = '/checkou
       const end = buffer.indexOf(0); if (end < 0) break;
       const request = parseCommand(buffer.subarray(0,end+1)); buffer = buffer.subarray(end+1);
       commands.push(request);
-      if (request.name === 'feature_set') socket.write(frame(response(request,`success="${failFeature ? 0:1}"`)));
+      if (request.name === 'feature_get') socket.write(frame(response(request,'supported="1"',request.args.n === 'breakpoint_types' ? 'line conditional exception call return':'0')));
+      else if (request.name === 'feature_set') socket.write(frame(response(request,`success="${failFeature ? 0:1}"`)));
       else if (request.name === 'eval') {
         seenEval(request);
         if (!holdEval) socket.write(frame(response(request,'',`<property type="string" encoding="base64">${Buffer.from(method+' '+uri).toString('base64')}</property>`)));
@@ -89,4 +90,18 @@ test('all unclaimed requests are released and disposal is idempotent',async t =>
   const peer = await engine(t,listener); await once(peer.socket,'close');
   assert(peer.commands.some(command => command.name === 'detach'));
   assert.equal(listener.close(),listener.close());
+});
+test('concurrent listener startup shares one bind and shutdown during bind leaves none',async t => {
+  const listener = new Listener();t.after(() => listener.close());
+  const first = listener.listen(0);assert.equal(first,listener.listen(0));await first;
+  assert.equal(await listener.listen(0),listener);
+  const closing = new Listener();const starting = closing.listen(0);const rejected = assert.rejects(starting,/closed during startup/);
+  await closing.close();await rejected;await assert.rejects(closing.listen(0),/closed/);
+});
+test('connection admission rejects only new sockets and retains diagnostics',async t => {
+  const listener = await setup(t,{maxSessions:1});
+  const first = net.connect(listener.port,listener.host);t.after(() => first.destroy());await once(first,'connect');await tick();
+  const diagnostic = once(listener,'diagnostic');const second = net.connect(listener.port,listener.host);t.after(() => second.destroy());
+  await once(second,'connect');await once(second,'close');assert.match((await diagnostic)[0].message,/capacity/);
+  assert.equal(first.destroyed,false);assert.match(listener.diagnostics[0].message,/capacity/);
 });

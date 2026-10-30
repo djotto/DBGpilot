@@ -10,21 +10,21 @@ Counts of parametrized pytest cases are not a migration target.
 | `test_protocol.py` | Partial | Framing, fragmentation, quoting, binary payloads, namespace/length validation migrated to `protocol.test.js`; expand randomized/backpressure cases. |
 | `test_sessions.py` | Partial | State, operation guards, errors, late replies and explicit release in `session.test.js`; complete remaining session APIs. |
 | `test_properties.py` | Partial | Binary/extended values, partial results, metadata, integers and nonfinite values in `values.test.js`; remaining format cases pending. |
-| `test_evaluation_events.py` | Partial | On-time eval avoids duplicate stops; abandoned eval restores state; extend retained in-process event coverage. |
-| `test_cancellation.py` | Adapt | AbortSignal waiter cancellation started; retire RPC cancellation/tombstones/client reconnect cases. |
+| `test_evaluation_events.py` | Migrated/adapted | On-time evaluations do not duplicate stops or overflow the retained queue; abandoned success/error restores the pause and publishes recovery; expr/exec and HTTP replay portions excluded. |
+| `test_cancellation.py` | Migrated/adapted | AbortSignal execution/wait/event cancellation retains engine ownership and future events; RPC IDs/tombstones/client reconnect portions retire. |
 | `test_binary_evaluation.py` | Adapt | Raw binary command payload coverage started; retire HTTP binary-envelope input cases. |
 | `test_review.py` | Review individually | Preserve engine/lifecycle regressions; retire daemon/client-only cases. |
 | `test_review_findings.py` | Review individually | Preserve fixture cleanup/cancellation cases; retire Python setup/config-only cases. |
-| `test_review_browser.py` | Adapt | Navigation/POST/AJAX, copied snapshots, late stops and assertion-failure cleanup started. |
+| `test_review_browser.py` | Adapt | Navigation/POST/AJAX, copied snapshots, late stops, action/setup failures, deadlines and cancellation covered; fine-grained cleanup races still under review. |
 | `test_browser.py` | Adapt | Core browser behaviours started in `checkout.spec.js`; replace daemon connections with fixture ownership. |
 | `test_integration.py` | Port | Complete live command coverage and engine error/termination assertions. |
 | `test_conformance.py` | Port | Port relevant PHP/Xdebug wire and data cases; no HTTP transport requirement. |
-| `test_context_names.py` | Port | Add context discovery and invalid context metadata regressions. |
-| `test_paths.py` | Port | Local/remote roots, Windows paths, URI preservation and ambiguity checks. |
-| `test_path_mapping_sessions.py` | Adapt | Port mapped breakpoints/results; remove client reconnect steps. |
-| `test_compatibility.py` | Adapt | Preserve real PHP/Xdebug version matrix and byte/value/path assertions. |
-| `test_stress.py` | Adapt | Retain concurrent requests, limits and long pauses; replace daemon restart with owner/worker lifecycle tests. |
-| `test_drupal.py` | Adapt | Preserve rendering, form/database persistence and autocomplete AJAX; remove reconnect and daemon setup portions. |
+| `test_context_names.py` | Migrated | Valid/missing/empty/nonnumeric/fractional IDs and caller validation in `api.test.js`; HTTP duplication retires with the service. |
+| `test_paths.py` | Migrated/adapted | 35 mapping tests cover Windows/UNC, byte/Unicode URIs, traversal, normalized roots, case policies, round trips and overrides. TOML discovery adapts to JS options; see exceptions. |
+| `test_path_mapping_sessions.py` | Migrated/adapted | Mapped init/results/stack inputs/snapshot fallback/source/breakpoints/notifications in unit and actual Windows-to-Linux browser cases; HTTP/CLI/reconnect and optional spawnpoint portions excluded. |
+| `test_compatibility.py` | Migrated | All six PHP/Xdebug combinations passed in `tests/live/compatibility.test.js`, with independent runtime results in `compatibility-js.json`; reconnect portions removed. |
+| `test_stress.py` | Migrated/adapted | Real concurrent PHP processes, three simultaneous browser captures, explicit stop, owner shutdown and 35-second browser pause pass; daemon-restart/API retention portions retire. |
+| `test_drupal.py` | Migrated/adapted | Three real scenarios passed in `acceptance.spec.js`: render-only mutation with unchanged database, Form API saved mutation and fresh read, autocomplete/database query; reconnect and owned Python daemon portions removed. |
 | `test_browser_diagnostics.py` | Adapt | Use Playwright traces, screenshots and request diagnostics; preserve useful failure evidence. |
 | `test_setup_browser.py` | Adapt | Replace owned Python daemon setup with fixture setup/teardown failure tests. |
 | `test_setup.py` | Retire/adapt | Retire Python configuration and CLI ownership; retain relevant JS configuration validation. |
@@ -39,7 +39,7 @@ Counts of parametrized pytest cases are not a migration target.
 | `test_health.py` | Retire | No persistent HTTP health endpoint. |
 | `test_server_hosts.py` | Retire/adapt | HTTP auth/host checks retire; listener address/bind coverage remains relevant. |
 | `test_server_retention.py` | Retire | No daemon-retained session history; test in-process pruning instead. |
-| `test_release.py` | Replace | npm package content/install/license/export checks replace wheel/source-distribution checks. |
+| `test_release.py` | Migrated/adapted | Actual npm tarball payload, license, installed bytes, fresh external consumers, CJS/ESM exports and installed TypeScript checks pass in `check_js_package.mjs`. Wheel/source build-specific assertions retire. No npm reproducible-build claim is made. |
 | `test_github_release.py` | Review at cutover | Current uploader is Python-wheel specific; replace artifact assumptions if continuing GitHub Releases. |
 
 The supplied five JS Drupal proof tests are separate from `test_drupal.py`.

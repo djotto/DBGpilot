@@ -1,11 +1,21 @@
 {
   "name": "dbgpilot-migration",
   "private": true,
-  "workspaces": ["playwright-xdebug"],
+  "workspaces": [
+    "playwright-xdebug"
+  ],
   "scripts": {
     "test": "npm test --workspace=playwright-xdebug",
     "test:browser": "npm run test:browser --workspace=playwright-xdebug",
-    "test:drupal": "npm run test:drupal --workspace=playwright-xdebug"
+    "test:drupal": "npm run test:drupal --workspace=playwright-xdebug",
+    "test:compatibility": "npm run test:compatibility --workspace=playwright-xdebug",
+    "test:stress": "npm run test:stress --workspace=playwright-xdebug",
+    "test:types": "npm run test:types --workspace=playwright-xdebug",
+    "check:package": "node scripts/check_js_package.mjs",
+    "check:fast": "npm test && npm run test:types",
+    "check:all": "npm run check:fast && npm run test:browser && npm run test:compatibility && npm run test:drupal && npm run test:stress && npm run check:package"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

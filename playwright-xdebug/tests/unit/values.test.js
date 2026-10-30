@@ -20,6 +20,7 @@ test('partial containers retain fetched children and cannot masquerade as PHP st
   const value = toValue({type:'array',numchildren:'2',property:[{name:'0',...scalar('int','7')}]});
   assert(value instanceof PartialValue); assert.deepEqual(value.children,[{name:'0',value:7}]); assert.equal(value.totalChildren,2);
   assert.deepEqual(toValue({type:'array',numchildren:'0'}),[]);
+  assert.equal(parseProperty({type:'array',numchildren:'0'}).value,null);
 });
 test('extended properties preserve binary names, fullname and raw values',() => {
   const prop = parseProperty({type:'string',name:{encoding:'base64','#text':'/wA='},fullname:{encoding:'base64','#text':'JHg='},value:{encoding:'base64','#text':'/wA='},size:'2',facet:'private',address:'123'});

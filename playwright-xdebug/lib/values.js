@@ -1,5 +1,6 @@
 const { isUtf8 } = require('node:buffer');
 const { ProtocolError } = require('./dbgp');
+const {encodeBytes} = require('./encoding');
 function bytes(node) {
   const raw = typeof node === 'object' ? node?.['#text'] ?? '' : node ?? '';
   if (node?.encoding === 'base64') {
@@ -10,7 +11,7 @@ function bytes(node) {
     return Buffer.from(encoded,'base64');
   }
   if (node?.encoding && node.encoding !== 'none') throw new ProtocolError('Unsupported property encoding');
-  return Buffer.from(String(raw));
+  return encodeBytes(String(raw));
 }
 function text(node) {
   const data = bytes(node);
@@ -21,25 +22,33 @@ function integer(value,name,fallback) {
   if (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value))) throw new ProtocolError(`Invalid property ${name}`);
   return Number(value);
 }
-function parseProperty(property) {
+function parseProperty(property,typeMap = new Map()) {
   if (!property || typeof property !== 'object' || !property.type) throw new ProtocolError('Response contains no valid property');
-  const children = (property.property ?? []).map(parseProperty);
-  const rawValue = ['array','object','null','uninitialized'].includes(property.type) ? undefined : bytes(property.value ?? property);
+  const commonType = typeMap.get(property.type)?.type ?? property.type;
+  const children = (property.property ?? []).map(child => parseProperty(child,typeMap));
+  const rawValue = ['array','hash','object','null','uninitialized'].includes(commonType) ? undefined : bytes(property.value ?? property);
   let value;
   const scalar = rawValue?.toString();
-  switch (property.type) {
+  switch (commonType) {
+    case 'array':
+    case 'hash':
+    case 'object': value = null; break;
     case 'null': value = null; break;
     case 'uninitialized': value = undefined; break;
+    case 'boolean':
     case 'bool':
       if (!['0','1'].includes(scalar)) throw new ProtocolError('Invalid boolean property');
       value = scalar === '1'; break;
+    case 'integer':
     case 'int': {
-      if (!/^-?\d+$/.test(scalar)) throw new ProtocolError('Invalid integer property');
+      if (!/^[+-]?\d+$/.test(scalar)) throw new ProtocolError('Invalid integer property');
       const big = BigInt(scalar);
       value = big <= BigInt(Number.MAX_SAFE_INTEGER) && big >= BigInt(Number.MIN_SAFE_INTEGER) ? Number(big) : big;
       break;
     }
+    case 'double':
     case 'float':
+      if (!['INF','-INF','NAN'].includes(scalar) && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(scalar)) throw new ProtocolError('Invalid float property');
       value = scalar === 'INF' ? Infinity : scalar === '-INF' ? -Infinity : scalar === 'NAN' ? NaN : Number(scalar);
       if (Number.isNaN(value) && scalar !== 'NAN') throw new ProtocolError('Invalid float property');
       break;
@@ -49,14 +58,15 @@ function parseProperty(property) {
   const size = integer(property.size,'size');
   const page = integer(property.page,'page',0);
   return {
-    name:text(property.name), fullname:text(property.fullname), type:property.type,
+    name:text(property.name), fullname:text(property.fullname), type:property.type,commonType,
     classname:property.classname === undefined ? undefined : text(property.classname),
     value, rawValue, children, totalChildren, size, page,
     pageSize:integer(property.pagesize,'pagesize'),
     hasChildren:property.children === '1' || totalChildren > 0,
     childrenTruncated:page > 0 || totalChildren > children.length,
     valueTruncated:rawValue !== undefined && size !== undefined && size > rawValue.length,
-    facet:property.facet, constant:property.constant, key:property.key, address:property.address,
+    facet:property.facet, facets:(property.facet ?? '').split(/\s+/).filter(Boolean),
+    constant:property.constant === undefined ? undefined:property.constant === '1', key:property.key, address:property.address,
   };
 }
 // Typed partial values cannot be mistaken for PHP string placeholders.
@@ -72,13 +82,13 @@ class PartialValue {
 }
 function plainValue(property) {
   if (property.valueTruncated) return new PartialValue(property);
-  if (!['array','object'].includes(property.type)) return property.value;
+  if (!['array','hash','object'].includes(property.commonType)) return property.value;
   if (property.childrenTruncated || property.children.some(p => Buffer.isBuffer(p.name))) return new PartialValue(property);
   const entries = property.children.map(child => [child.name,plainValue(child)]);
-  if (property.type === 'object') return {__class:property.classname,...Object.fromEntries(entries)};
+  if (property.commonType === 'object') return {__class:property.classname,...Object.fromEntries(entries)};
   return entries.every(([key],i) => key === String(i)) ? entries.map(([,value]) => value) : Object.fromEntries(entries);
 }
-function toValue(property) { return plainValue(parseProperty(property)); }
+function toValue(property,typeMap) { return plainValue(parseProperty(property,typeMap)); }
 function toPhp(value,seen = new Set()) {
   if (value === null) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
@@ -92,7 +102,7 @@ function toPhp(value,seen = new Set()) {
     }
     return String(value);
   }
-  if (typeof value === 'string' || Buffer.isBuffer(value)) return `base64_decode('${Buffer.from(value).toString('base64')}')`;
+  if (typeof value === 'string' || Buffer.isBuffer(value)) return `base64_decode('${(Buffer.isBuffer(value) ? value:encodeBytes(value)).toString('base64')}')`;
   if (!value || typeof value !== 'object' || (!Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype)) {
     throw new TypeError('Assignments accept null, scalars, Buffers, arrays and plain objects');
   }

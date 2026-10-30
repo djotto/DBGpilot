@@ -2,6 +2,7 @@ const net = require('node:net');
 const { EventEmitter } = require('node:events');
 const { Connection, ProtocolError, ConnectionClosed } = require('./dbgp');
 const { Session } = require('./session');
+const {capture,actionOwner} = require('./capture');
 class Listener extends EventEmitter {
   owners = new Map();
   #server;
@@ -9,14 +10,29 @@ class Listener extends EventEmitter {
   #preparations = new Set();
   #closing;
   #closed = false;
+  #starting;
+  #address;
+  #diagnostics = [];
   constructor({handshakeTimeout = 5000,maxSessions = 256,connectionOptions = {}} = {}) {
     super();
     if (!Number.isFinite(handshakeTimeout) || handshakeTimeout <= 0) throw new TypeError('handshakeTimeout must be positive');
     if (!Number.isSafeInteger(maxSessions) || maxSessions < 1) throw new TypeError('maxSessions must be positive');
     Object.assign(this,{handshakeTimeout,maxSessions,connectionOptions});
   }
-  async listen(port = 9003,host = '127.0.0.1') {
-    if (this.#server || this.#closed) throw new Error('Listener has already started or closed');
+  get diagnostics() { return this.#diagnostics.map(error => ({name:error.name,message:error.message,code:error.code})); }
+  #diagnostic(error) {
+    this.#diagnostics.push(error); if (this.#diagnostics.length > 50) this.#diagnostics.shift();
+    this.emit('diagnostic',error);
+  }
+  listen(port = 9003,host = '127.0.0.1') {
+    if (this.#closed) return Promise.reject(new ConnectionClosed('Listener is closed'));
+    const address = `${host}:${port}`;
+    if (this.#starting) return address === this.#address ? this.#starting : Promise.reject(new Error('Listener is already starting on another address'));
+    this.#address = address;
+    this.#starting = this.#listen(port,host);
+    return this.#starting;
+  }
+  async #listen(port,host) {
     this.#server = net.createServer(socket => this.#accept(socket));
     await new Promise((resolve,reject) => {
       const failed = error => reject(error.code === 'EADDRINUSE'
@@ -24,7 +40,8 @@ class Listener extends EventEmitter {
       this.#server.once('error',failed);
       this.#server.listen(port,host,() => {
         this.#server.off('error',failed);
-        this.#server.on('error',error => this.emit('diagnostic',error));
+        this.#server.on('error',error => this.#diagnostic(error));
+        if (this.#closed) return this.#server.close(() => reject(new ConnectionClosed('Listener closed during startup')));
         this.port = this.#server.address().port;
         this.host = host;
         resolve();
@@ -32,12 +49,22 @@ class Listener extends EventEmitter {
     });
     return this;
   }
+  register(owner) {
+    if (this.#closed) throw new ConnectionClosed('Listener is closed');
+    if (this.owners.has(owner.ideKey)) throw new Error(`Xdebug IDE key is already owned: ${owner.ideKey}`);
+    if (owner.disposed) throw new ConnectionClosed('Xdebug owner is disposed');
+    owner.listener = this;
+    this.owners.set(owner.ideKey,owner);
+    return owner;
+  }
+  unregister(owner) { if (this.owners.get(owner.ideKey) === owner) this.owners.delete(owner.ideKey); }
   close() {
     if (!this.#closing) this.#closing = this.#close();
     return this.#closing;
   }
   async #close() {
     this.#closed = true;
+    await this.#starting?.catch(() => {});
     const closed = this.#server?.listening ? new Promise(resolve => this.#server.close(resolve)) : Promise.resolve();
     await Promise.all([...this.owners.values()].map(owner => owner.dispose()));
     // Includes connections that never initialized or are still preparing.
@@ -49,7 +76,7 @@ class Listener extends EventEmitter {
   #accept(socket) {
     if (this.#closed || this.#connections.size >= this.maxSessions) {
       socket.destroy();
-      this.emit('diagnostic',new Error('Xdebug listener is closed or at capacity'));
+      this.#diagnostic(new Error('Xdebug listener is closed or at capacity'));
       return;
     }
     const connection = new Connection(socket,this.connectionOptions);
@@ -58,7 +85,7 @@ class Listener extends EventEmitter {
     connection.once('close',error => {
       clearTimeout(timer);
       this.#connections.delete(connection);
-      if (error instanceof ProtocolError) this.emit('diagnostic',error);
+      if (error instanceof ProtocolError) this.#diagnostic(error);
     });
     connection.once('init',init => {
       clearTimeout(timer);
@@ -83,7 +110,7 @@ class Listener extends EventEmitter {
       if (this.#closed || owner.disposed || this.owners.get(init.idekey) !== owner) await session.release();
       else owner.offer(session);
     } catch (error) {
-      this.emit('diagnostic',error);
+      this.#diagnostic(error);
       owner?.reportError(error);
       if (session) await session.release();
       else connection.close(error);
@@ -99,13 +126,25 @@ class Xdebug {
   #errors = [];
   #disposing;
   disposed = false;
-  constructor(context,ideKey,unclaimedTimeout = 2000,{step = (_title,fn) => fn(),...sessionOptions} = {}) {
+  captures = new Set();
+  captureOperations = new Set();
+  capturePages = new Set();
+  constructor(context,ideKey,unclaimedTimeout = 2000,{step = (_title,fn) => fn(),listener,...sessionOptions} = {}) {
     if (!Number.isFinite(unclaimedTimeout) || unclaimedTimeout < 0) throw new TypeError('unclaimedTimeout must be nonnegative');
     this.#context = context;
     this.ideKey = ideKey;
     this.#unclaimedTimeout = unclaimedTimeout;
     this.step = step;
     this.sessionOptions = {...sessionOptions,step};
+    this.listener = listener;
+  }
+  createCaptureOwner(ideKey) { return new Xdebug(this.#context,ideKey,this.#unclaimedTimeout,{...this.sessionOptions,listener:this.listener}); }
+  capture(page,action,options) { return capture(this,page,action,options); }
+  goto(page,url,options = {}) {
+    const target = new URL(url);
+    if (!['http:','https:'].includes(target.protocol)) return Promise.reject(new TypeError('goto requires an absolute HTTP(S) URL'));
+    target.hash = '';
+    return this.capture(page,() => page.goto(url,{timeout:options.navigationTimeout ?? 0}),{...options,urlPattern:requestURL => requestURL.href === target.href});
   }
   async enableFor(url) {
     if (this.disposed) throw new ConnectionClosed('Xdebug owner is disposed');
@@ -173,12 +212,20 @@ class Xdebug {
     this.#unclaimed.set(session,timer);
   }
   dispose() {
+    if (actionOwner.getStore() === this) return Promise.reject(new Error('Dispose the debugger outside its browser action'));
     if (!this.#disposing) {
       this.disposed = true;
+      for (const operation of this.captureOperations) operation.controller.abort(new ConnectionClosed('Debugger disposed during capture'));
       for (const waiter of [...this.#waiters]) waiter.fail(new ConnectionClosed('Test finished while waiting for an Xdebug session'));
       for (const timer of this.#unclaimed.values()) clearTimeout(timer);
       this.#unclaimed.clear();
-      this.#disposing = Promise.all([...this.#sessions].map(session => session.release())).then(() => {});
+      this.#disposing = (async () => {
+        await Promise.allSettled([...this.captureOperations].map(operation => operation.done));
+        await Promise.all([...this.#sessions].map(session => session.release()));
+        await Promise.all([...this.captures].map(paused => paused.close()));
+        // A successfully completed capture is also in captures; failed setup
+        // has already disposed its temporary owner before settling its job.
+      })();
     }
     return this.#disposing;
   }

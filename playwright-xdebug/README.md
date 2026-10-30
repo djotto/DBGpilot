@@ -16,6 +16,25 @@ The root npm workspace supplies `require('playwright-xdebug')`. In another local
 project, install this folder as a file dependency alongside `@playwright/test`.
 No Python or pytest is required by the JavaScript implementation.
 
+`npm run check:package` produces a validated, unpublished tarball at
+`dist/js-candidate/playwright-xdebug-0.1.0.tgz`. Install that artifact in an
+existing project with:
+
+```sh
+npm install /absolute/path/playwright-xdebug-0.1.0.tgz @playwright/test
+```
+
+TypeScript declarations and native ESM imports are included:
+
+```js
+import {test, expect} from 'playwright-xdebug';
+import {Listener, PathMapper} from 'playwright-xdebug/core';
+```
+
+Run `npm run test:types` to check the public declarations against CommonJS and
+ESM consumers. The package validator also checks them after a clean tarball
+installation outside this repository.
+
 ```js
 const {test, expect} = require('playwright-xdebug');
 
@@ -70,31 +89,93 @@ query, and `method` optionally filters GET/POST/etc. Unknown IDE keys detach.
 Setup/preparation errors reach the waiting test. Test teardown releases every
 tracked session, including requests still preparing, after success or failure.
 
+For one action, `goto()` / `capture()` install a unique per-request trigger,
+configure breakpoints, and return a snapshot while PHP remains paused:
+
+```js
+const paused = await xdebug.goto(page, 'http://localhost/checkout?code=SAVE10', {
+  breakpoints: [{file: '/var/www/html/src/Checkout.php', line: 42}],
+  variables: ['$discount'],
+});
+expect(paused.snapshot.variables.$discount.value).toBe(10);
+await paused.session.setVariable('$discount', 15);
+await paused.session.detach();
+await paused.finished();
+await paused.close();
+```
+
+For POST or AJAX, use `xdebug.capture(page, () => action(), options)` with
+`urlPattern` (a Playwright route glob/RegExp/URL predicate) and optional `method`.
+The action can finish before PHP responds; capture still waits for the breakpoint.
+Each page can have one capture setup in progress; different pages can capture
+concurrently. The capture deadline ends when the paused handle returns.
+`finished({timeout, signal})` waits for the action without resuming PHP.
+`close()` releases its PHP session and routing, and is shared by repeated calls.
+The fixture also closes all captures at teardown.
+
+After selecting the first request, the route passes subsequent requests through.
+Physical route removal happens when the capture closes: disabling Chromium
+interception during a paused navigation can wait for PHP's response. Failed setup
+releases PHP before removing routing. Cleanup is bounded and retains the original
+action/setup error if route cleanup also fails. A cleanup error is attached as
+`error.cleanupError`. Helper waits can be aborted; an arbitrary user callback's
+promise cannot be forcibly cancelled without taking ownership of its page.
+
+Configure source roots through Playwright options when local and PHP paths differ:
+
+```js
+test.use({
+  xdebugPathMappings: [{local: 'C:\\Site', remote: 'file:///var/www/html'}],
+});
+// session.setBreakpoint('C:\\Site\\src\\Checkout.php', 42)
+```
+
+Mappings are lexical, support Windows/UNC paths on Linux, and use the longest
+matching directory root. Ambiguous mappings and unmapped outgoing local paths
+fail explicitly. Explicit `file:` and `dbgp:` engine URIs bypass outbound mapping.
+Results include `fileUri` (engine URI), `localFile`, and `pathMappingError`; `file`
+remains a convenient server path for compatibility with the initial fixture.
+`xdebugBaseDir` supplies the base for relative local paths, otherwise the process
+working directory is used. Standalone callers can construct a `PathMapper` and
+pass it as `pathMappings`. JS options replace Python TOML discovery.
+
 | Method | Behaviour |
 | --- | --- |
 | `xdebug.waitForSession({url, method, timeout, signal})` | Claim a matching request. AbortSignal cancellation removes the waiter. |
 | `session.setBreakpoint(file, line, {condition, temporary, hitValue, hitCondition, state})` | Returns an opaque breakpoint ID; use a PHP-server path or file URI. |
 | `session.setExceptionBreakpoint(className = '*')` | Break on an exception. |
 | `session.removeBreakpoint(id)` | Remove a breakpoint. |
+| `session.getBreakpoint(id)`, `breakpoints()`, `updateBreakpoint(id, options)` | Mapped engine records, hit/state/line updates and a copied `knownBreakpoints` inventory. |
 | `session.runUntilBreak({timeout})` | Return while PHP is paused; release and throw if execution finishes first. |
 | `session.run()`, `stepInto()`, `stepOver()`, `stepOut()` | Wait for the next execution result. Options accept a timeout in milliseconds. |
 | `session.waitForPause({timeout, signal})` | Recover the eventual pause after an earlier execution wait timed out, within this test. |
 | `session.stack()` | Frames with level, function location, server file and line. |
+| `session.stack({frame})`, `stackDepth()`, `contexts({frame})` | Selected frames, nested input locations and context discovery. |
+| `session.status()`, `featureGet(name)`, `featureSet(name, value)`, `refreshCapabilities(names)`, `typeMap()` | Validated metadata, capability cache and engine type mappings. |
 | `session.locals({frame, context})` | Convenient local/context values. |
 | `session.getVariable(name, {frame, depth, context})` | Convenient values; follows direct-child pages and optionally descends. |
 | `session.getProperty(name, options)` | Structured values, raw bytes, fullnames, metadata and truncation flags. |
+| `session.getPropertyPage(name, {frame, context, page, maxData, key, address})` | One explicitly selected page, with complete targeting metadata. |
+| `session.propertyValue(name, options)`, `propertyValueInfo(name, options)` | Full raw bytes and byte-size/truncation/target metadata. |
 | `session.evaluate(php, {timeout})` | Evaluate PHP in the current frame. May have side effects. |
 | `session.setVariable(name, value, {frame, context})` | Assign an existing variable/property. Scalars, Buffers, arrays and plain objects are supported. |
+| `session.setProperty(name, expression, {frame, context, type, address})` | Explicit PHP expression/Buffer assignment, preserving payload byte length. |
+| `session.source(file, {begin, end})`, `setOutput(stream, mode)` | Mapped/virtual/current source bytes and stdout/stderr off/copy/redirect modes. |
 | `session.snapshot({variables, expressions, frame, depth, context})` | Independent JSON-safe copy of execution, stack and requested properties. Expressions may have side effects. |
 | `session.detach()` / `session.stop()` | Let PHP finish / explicitly terminate a paused request. |
 | `session.command(name, args, data, timeout)` | Raw DBGp command. Known execution commands use the same execution guards. |
+| `session.nextEvent({timeout, signal})` | Retained in-process stream/notification/stop/closed events; cancellation does not consume a later event. |
 
 All timeouts are milliseconds. A timeout abandons the caller's wait, not PHP
 execution. The session stays busy until the actual reply; `waitForPause()` can
 recover a late breakpoint. Inspection/mutation/evaluation fail immediately while
 another operation owns the session. `detach()` explicitly releases it instead.
 Streams and notifications are exposed as in-process `stream` and `notification`
-events. There is no daemon, cross-process reconnection or event replay service.
+events and through `nextEvent()`. The queue defaults to 1024 events; overflow
+closes the debugger connection with an explicit protocol error. On-time evaluations
+do not generate duplicate stops. Continuations and evaluations accept an
+AbortSignal; aborting their wait preserves execution ownership until the real
+reply. There is no daemon, cross-process reconnection or event replay service.
 
 UTF-8 PHP strings become JS strings; invalid UTF-8 becomes a lossless `Buffer`.
 Safe integers become numbers; larger PHP integers become `BigInt`. `INF`, `-INF`
@@ -129,12 +210,23 @@ The maintained PHP/browser and Drupal smoke suites have runnable configurations:
 ddev exec npm ci
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:browser
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:drupal
+ddev exec npm run test:compatibility
+ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:stress
+ddev exec npm run check:package
 ```
 
 The PHP suite starts a temporary PHP server; the Drupal suite uses the pinned
-fixture provisioned with `ddev drupal-setup`. See the migration plan for the
-remaining PHP/Xdebug version matrix and Drupal persistence/AJAX migration.
+fixture provisioned with `ddev drupal-setup`, including real render-only mutation,
+saved Form API changes and author-autocomplete AJAX/database queries. The runtime
+matrix requires the existing cached historical Xdebug modules. The stress suite
+uses Linux PHP CLI server workers for parallel browser requests and includes a
+35-second pause. See the migration plan for the remaining coverage audit and cutover.
 Drupal caches may bypass application breakpoints; choose an executable line
 that the selected request reaches. Browser action deadlines and Playwright's
 whole-test deadline are separate from debugger deadlines and should allow the
 intended pause. Keep the browser and event loop alive until PHP is released.
+
+The standalone example takes `DBGPILOT_SCRIPT_URL`, `DBGPILOT_SCRIPT_FILE`, and
+`DBGPILOT_SCRIPT_LINE`, with optional `DBGPILOT_SCRIPT_HOST`,
+`DBGPILOT_SCRIPT_PORT` and `DBGPILOT_SCRIPT_IDEKEY`. These names are specific to
+this example; `DEBUG_FILE` is reserved by Playwright for debug logging.

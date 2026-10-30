@@ -2,8 +2,8 @@
 
 Branch: `migration/playwright`. Approved scope, 2026-10-30: replace the Python
 DBGpilot implementation with the JavaScript Playwright fixture. The Python
-implementation stays available during migration as a behavioural reference;
-release tags and Git history will preserve it after cutover.
+implementation is preserved on [archive/python](https://github.com/djotto/DBGpilot/tree/archive/python)
+as a behavioural reference. The active tree contains the JavaScript implementation.
 
 Investigations run inside one Playwright test or one standalone Node script.
 The owning test/script releases its PHP sessions on completion. Cross-script
@@ -17,7 +17,7 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
 
 ## First milestone
 
-- [x] Create the branch and an npm workspace with a checked-in dependency lock.
+- [x] Create the migration branch and a checked-in npm dependency lock.
 - [x] Retain timed-out commands and process late execution/error replies.
 - [x] Guard inspection, mutation and evaluation against overlapping operations.
 - [x] Preserve binary strings, large integers, nonfinite floats and partial data.
@@ -51,13 +51,17 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
   scenarios from the Python acceptance suite; remove reconnect-only portions.
 - [x] Complete standalone and fixture examples, TypeScript declarations, package
   validation, licensing payload, and installation/networking documentation.
-- [ ] Replace the default setup/check/release entry points with the verified JS
-  versions, then remove the retired Python implementation and dependencies.
-- [ ] Reconcile every old test file with retained coverage or a documented
-  retirement reason, then merge the replacement into `main`.
+- [x] Replace setup/check/candidate-release entry points with JS versions; remove
+  the retired Python implementation, Poetry dependencies and pytest tooling.
+- [x] Preserve the final Python main on `archive/python` and unpublish both
+  Python GitHub releases as drafts, retaining their assets and historical tags.
+- [x] Move the JS package to the repository root for direct GitHub installation.
+- [x] Account for every old test file in the inventory with retained coverage,
+  pending scenarios or a documented retirement/deferment reason.
+- [x] Validate the root-package cutover and merge the replacement into `main`.
 
 No new npm package publication, CI provider or release destination is selected
-by this migration. The existing Python release assets remain historical.
+by this migration. The Python release assets remain retained in unpublished drafts.
 Track limitations, exclusions and deferred decisions in
 [migration exceptions](docs/migration-exceptions.md); ordinary pending work
 stays on the checklist above.
@@ -91,16 +95,16 @@ in the parent DDEV container. Its listener binds `0.0.0.0` for that connection.
 These checks do not modify PHP-FPM settings or start the Python daemon.
 `ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run check:all`
 runs the new fast, type, browser, compatibility, Drupal, stress and package checks
-in sequence. The old Python setup/check/release scripts remain historical until
-the final harness/cutover audit is complete.
+in sequence. `ddev test-setup` now installs Node dependencies, Chromium and
+pinned historical Xdebug modules using the JavaScript runtime builder.
 Missing PHP/Xdebug, browser binaries or Drupal sources fail the relevant job;
 they do not produce a silent success through skips.
 
 The existing browser cache is reused. New environments can install matching
 Chromium with `ddev exec npx playwright install --with-deps chromium`, setting
 `PLAYWRIGHT_BROWSERS_PATH` to the cache above when using these commands.
-Drupal fixture provisioning still uses the existing `ddev drupal-setup` harness
-during migration; replacing that tooling is part of the final cutover.
+Drupal fixture provisioning uses `ddev drupal-setup`; `ddev drupal-test` now
+runs the JS acceptance suite. No active setup or check entry point uses Python.
 
 ## Evidence
 
@@ -147,3 +151,12 @@ consumers. Its unpublished candidate and hash are recorded in
 Declaration checks also pass on the macOS host. They use the portable TypeScript
 5.9.3 compiler; TypeScript 7's native platform package conflicted with sharing
 `node_modules` between macOS and Linux/DDEV during validation.
+
+JS-only cutover (2026-10-30): the 166 unit checks and declarations passed on
+macOS and DDEV. All 16 browser outcomes, six runtime combinations, eight Drupal
+checks and five stress checks passed from the root package. The initial package
+check rejected leftover ignored Python bytecode under examples; the runtime
+allowlist now names only JS modules and the standalone example, and the clean
+20-file package check passes. The Node-only DDEV setup entry point also passed.
+Scenario-level audit items above remain open; archiving Python does not claim
+that every historical assertion has been reproduced.

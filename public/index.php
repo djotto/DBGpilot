@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../src/checkout.php';
+require __DIR__ . '/checkout-lib.php';
 
 $code = is_string($_GET['code'] ?? null) ? $_GET['code'] : '';
 $checkout = \Harness\checkout($code);

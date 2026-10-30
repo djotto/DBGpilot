@@ -10,7 +10,7 @@ database:
     type: mariadb
     version: "11.8"
 omit_containers: [db]
-webimage_extra_packages: [python3, python3-venv, python3-pip]
+webimage_extra_packages: []
 use_dns_when_possible: true
 timezone: Europe/London
 composer_version: "2"

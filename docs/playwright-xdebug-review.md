@@ -1,3 +1,7 @@
+> Historical review of the initial port. The active JS package now lives at the
+> repository root. Python paths refer to [archive/python](https://github.com/djotto/DBGpilot/tree/archive/python);
+> current coverage and unresolved work are in [MIGRATION.md](../MIGRATION.md).
+
 # Review of the Playwright migration
 
 Historical review of the initial supplied port. Subsequent scope excludes

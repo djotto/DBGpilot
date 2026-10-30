@@ -1,26 +1,15 @@
-# DBGpilot provenance
+# Provenance
 
-DBGpilot is an original implementation by DBGpilot contributors, distributed
-under the MIT license in LICENSE. Its runtime uses the Python standard library.
-No third-party debugger implementation, engine binary, PHP/Drupal fixture,
-downloaded vendor tree or reference project is part of its distributions.
+This JavaScript implementation derives from DBGpilot's original MIT-licensed
+Python debugger and the supplied reduced JavaScript port. Copyright notices and
+license terms are in LICENSE. The source repository preserves the Python
+implementation on its archive/python branch as a migration reference.
 
-The DBGp specification and public implementations were consulted as design
-and interoperability references, without copying or importing their code:
+The DBGp specification (https://xdebug.org/docs/dbgp), Xdebug's implementation,
+and public debugger projects were consulted when developing DBGpilot. No
+third-party debugger implementation or PHP/Drupal engine/application fixture
+is bundled in this JavaScript package.
 
-- DBGp 1.0 draft 22: https://xdebug.org/docs/dbgp
-- Xdebug implementation: https://github.com/xdebug/xdebug
-- Vdebug: https://github.com/vim-vdebug/vdebug
-- Komodo Python DBGp: https://github.com/agroszer/komodo-python3-dbgp
-- Pugdebug: https://github.com/Mte90/pugdebug
-
-Poetry/poetry-core are build tools. pytest, Hypothesis and Playwright are
-optional development/validation tools. PHP, Xdebug, dbgpProxy, Drupal, Composer
-and their downloaded dependencies retain their own licensing and are external
-test tooling. The optional-engine investigation downloads its pinned candidate
-outside the package and adds no runtime dependency.
-
-The source distribution contains the package's Python sources, maintained
-documentation, examples and validation scripts. Source is hosted at
-https://github.com/djotto/DBGpilot; testing artifacts are available through its
-GitHub Releases. Package-index publication remains pending.
+The runtime XML parser is fast-xml-parser (MIT). The Playwright Test fixture
+uses @playwright/test as a peer dependency (Apache-2.0). Those projects retain
+their own licenses. The core entry point does not import Playwright Test.

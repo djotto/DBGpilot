@@ -7,11 +7,11 @@ import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 const root = fileURLToPath(new URL('../',import.meta.url));
-const packageRoot = path.join(root,'playwright-xdebug');
+const packageRoot = root;
 const packageJSON = JSON.parse(fs.readFileSync(path.join(packageRoot,'package.json'),'utf8'));
 const lock = JSON.parse(fs.readFileSync(path.join(root,'package-lock.json'),'utf8'));
 function lockedVersion(name) {
-  const entry = lock.packages[`playwright-xdebug/node_modules/${name}`] ?? lock.packages[`node_modules/${name}`];
+  const entry = lock.packages[`node_modules/${name}`];
   assert(entry?.version,`Missing locked dependency: ${name}`);
   return entry.version;
 }
@@ -23,7 +23,7 @@ function run(command,args,cwd = root) {
   return execFileSync(command,args,{cwd,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
 }
 try {
-  const pack = JSON.parse(run('npm',['pack','--workspace=playwright-xdebug','--ignore-scripts','--json','--pack-destination',temp,'--cache',path.join(temp,'cache')]))[0];
+  const pack = JSON.parse(run('npm',['pack','--ignore-scripts','--json','--pack-destination',temp,'--cache',path.join(temp,'cache')]))[0];
   const expected = ['package.json','index.js','index.mjs','index.d.ts','core.js','core.mjs','core.d.ts','LICENSE','NOTICE.md','README.md','examples/standalone.js',
     ...fs.readdirSync(path.join(packageRoot,'lib')).filter(name => name.endsWith('.js')).map(name => 'lib/'+name)].sort();
   assert.deepEqual(pack.files.map(file => file.path).sort(),expected,'Unexpected npm package payload');

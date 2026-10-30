@@ -1,3 +1,0 @@
-[[path_mappings]]
-local = "."
-remote = "file:///var/www/html"

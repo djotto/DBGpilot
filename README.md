@@ -1,255 +1,242 @@
-Important note: This project is completely vibe-coded, even the docs. I haven't
-even opened most of the files here, and if you use it it's completely at your
-own risk. All the "tests" are LLM-written, too. They mean nothing.
+# playwright-xdebug
 
-This branch is migrating DBGpilot to JavaScript Playwright tests and ad hoc
-scripts, using a test-owned Xdebug fixture. Cross-script debugging is outside
-the replacement's scope. See [MIGRATION.md](MIGRATION.md) for current progress,
-test commands and the coverage plan, and [the fixture guide](playwright-xdebug/README.md)
-for the new API. Run the fast JavaScript checks with `npm ci && npm test`.
+JavaScript controls for PHP/Xdebug, with a Playwright Test fixture. This is the
+JavaScript implementation of DBGpilot; see
+[the migration plan](MIGRATION.md) for completed work and remaining coverage.
+The fixture and the same-process standalone API share one debugger implementation.
 
-The Python implementation and documentation below remain as a reference until
-the relevant coverage has migrated and the JavaScript replacement is ready.
-
-# DBGpilot
-
-An asynchronous Python controller for Xdebug's DBGp protocol. Python 3.12/3.13,
-MIT licensed, with no runtime dependencies outside the standard library.
-
-Current version: **0.1.1, testing prerelease**. Download the wheel/source from
-[GitHub Release v0.1.1-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.1-testing.1)
-and follow the [first-breakpoint guide](docs/installation.md).
-For an existing pytest / async Playwright project, start with the
-[consumer quickstart](docs/consumer-quickstart.md) and copyable minimal example.
-See [release policy](docs/release-policy.md), [changelog](CHANGELOG.md), and
-[candidate validation/rehearsal](docs/releasing.md) for compatibility and status.
-
-DBGpilot listens for PHP debugging connections. Each request gets an independent
-session that stays alive between inspection and execution commands. A breakpoint
-snapshot is a copied, JSON-safe value; returning it does not resume PHP.
-
-```python
-import json
-from dbgpilot import Controller
-
-async def investigate():
-    async with Controller(host="127.0.0.1", port=9003) as pilot:
-        # Trigger the PHP request concurrently, through a browser or HTTP client.
-        session = await pilot.wait_for_session(timeout=30)
-        await session.set_breakpoint("/var/www/html/src/checkout.php", 11)
-        stopped = await session.run_until_break(timeout=30)
-        snapshot = await session.snapshot(["$subtotal", "$discount"])
-        print(json.dumps(snapshot.to_dict()))
-
-        # PHP remains paused: the application can choose what to do next.
-        calculated = await session.evaluate("$subtotal - $discount")
-        await session.step_over()
-        await session.detach()  # Let PHP finish its HTTP response.
-```
-
-The listener and sessions live in the owning Python process. Use the persistent
-server when scripts or later tool calls need to reconnect to the same session.
-
-## Persistent server
-
-Run inside the DDEV container alongside PHP:
+From this repository:
 
 ```sh
-ddev poetry install
-ddev poetry run dbgpilot serve
+npm ci
+npm test
 ```
 
-The JSON API listens on `127.0.0.1:9004`; Xdebug connects separately on port
-9003. Keep this process running. In another terminal:
+Install from GitHub in the target project alongside Playwright Test:
 
 ```sh
-ddev poetry run dbgpilot call health
-ddev poetry run python scripts/check_server_harness.py
+npm install --save-dev playwright-xdebug@github:djotto/DBGpilot#main @playwright/test
 ```
 
-The example returns a breakpoint snapshot, closes its first client, reconnects
-with the session ID, changes the discount, and finishes the HTTP response.
-Closing a client leaves PHP paused. Explicitly call `detach()`, `stop()`, or
-`close()` to finish debugging. Sessions and their IDs last for the server process.
+The lockfile records the installed commit. Pin a reviewed commit SHA instead of
+`main` when you need an explicit version. No JS release tag or npm registry
+release has been published yet. No Python or pytest is required.
 
-```python
-from dbgpilot import Client
+The retired Python source is preserved on [archive/python](https://github.com/djotto/DBGpilot/tree/archive/python).
+Its two testing releases have been unpublished; their Git tags remain historical.
+See [development](docs/development.md) and [releasing](docs/releasing.md).
 
-async with Client() as pilot:
-    # Start the browser action concurrently: PHP may wait for debugging.
-    session = await pilot.wait_for_session(timeout=30)
-    await session.set_breakpoint("/var/www/html/src/checkout.php", 11)
-    snapshot = await session.break_and_return(["$subtotal", "$discount"])
-    session_id = session.id
-    # snapshot is JSON-safe; PHP stays paused after this client closes.
-
-async with Client() as later:
-    session = later.session(session_id)
-    value = await session.evaluate("$subtotal - $discount")
-    await session.detach()
-```
-
-The API supports concurrent clients and replayable event cursors. Python
-Playwright scripts can use `PlaywrightDebugger` to coordinate navigation,
-form submission, and AJAX with breakpoint snapshots; JavaScript scripts can
-call `/rpc` directly. `Client.request()` exposes explicit remote cancellation.
-See the [server guide](docs/server.md) for the wire protocol, Playwright example,
-session selection, deadlines, event history, and cleanup behaviour.
-
-Prepare the real browser and additional PHP/Xdebug test runtimes:
+`npm run check:package` produces a validated, unpublished tarball at
+`dist/js-candidate/playwright-xdebug-0.1.0.tgz`. Install that artifact in an
+existing project with:
 
 ```sh
-ddev test-setup
-ddev poetry run pytest
+npm install /absolute/path/playwright-xdebug-0.1.0.tgz @playwright/test
 ```
 
-With the server running, the actual browser example is:
+TypeScript declarations and native ESM imports are included:
+
+```js
+import {test, expect} from 'playwright-xdebug';
+import {Listener, PathMapper} from 'playwright-xdebug/core';
+```
+
+Run `npm run test:types` to check the public declarations against CommonJS and
+ESM consumers. The package validator also checks them after a clean tarball
+installation outside this repository.
+
+```js
+const {test, expect} = require('playwright-xdebug');
+
+test('discount applied', async ({page, xdebug}) => {
+  const waiting = xdebug.waitForSession({url: '/checkout', method: 'POST'});
+  const submission = page.getByRole('button', {name: 'Apply'}).click({timeout: 0});
+  submission.catch(() => {}); // Handle rejection while debugger waits are pending.
+  const session = await waiting;
+  await session.setBreakpoint('/var/www/html/src/Checkout.php', 42);
+  await session.runUntilBreak();
+  expect(await session.evaluate('$discount')).toBe(10);
+  await session.setVariable('$discount', 15);
+  await session.detach();
+  await submission;
+  await expect(page.getByTestId('total')).toHaveText('85');
+});
+```
+
+Configure `baseURL` in Playwright's `use` settings. PHP must connect **to the
+machine/container running the fixture**, on the fixture's listener address/port:
+
+```ini
+xdebug.mode=debug
+xdebug.start_with_request=trigger
+xdebug.client_host=127.0.0.1
+xdebug.client_port=9003
+```
+
+Use the address reachable from PHP when running across containers. Restart the
+actual serving PHP runtime after changing its configuration. `xdebugHost` is
+where the fixture binds; it can differ from PHP's destination hostname. Use
+`0.0.0.0` when accepting connections from another container, on an appropriate
+trusted development network.
+
+Run debugger specs with one worker. Every worker would otherwise try to bind
+the same Xdebug port; an IDE listener can also conflict. Separate PHP runtimes
+and ports are needed for independently configured concurrent debug workers.
+The listener can hold multiple PHP sessions within one test.
+
+The fixture sets a unique `XDEBUG_TRIGGER` cookie for the baseURL hostname.
+`xdebug.enableFor(url)` enables another hostname. An explicit `xdebugIdeKey`
+option supports an allowed trigger value configured by the application;
+otherwise PHP must accept the generated random trigger values. `xdebugPort`
+(default 9003), `xdebugHost` (127.0.0.1) and `xdebugUnclaimedTimeout` (2000 ms)
+are configurable fixture options.
+
+Matching PHP requests throughout that browser context connect and pause,
+including AJAX and redirects. Unclaimed requests are released after the
+unclaimed timeout. Call `waitForSession()` before the action when possible.
+A string `url` matches the path, ignoring the query; a RegExp matches path and
+query, and `method` optionally filters GET/POST/etc. Unknown IDE keys detach.
+Setup/preparation errors reach the waiting test. Test teardown releases every
+tracked session, including requests still preparing, after success or failure.
+
+For one action, `goto()` / `capture()` install a unique per-request trigger,
+configure breakpoints, and return a snapshot while PHP remains paused:
+
+```js
+const paused = await xdebug.goto(page, 'http://localhost/checkout?code=SAVE10', {
+  breakpoints: [{file: '/var/www/html/src/Checkout.php', line: 42}],
+  variables: ['$discount'],
+});
+expect(paused.snapshot.variables.$discount.value).toBe(10);
+await paused.session.setVariable('$discount', 15);
+await paused.session.detach();
+await paused.finished();
+await paused.close();
+```
+
+For POST or AJAX, use `xdebug.capture(page, () => action(), options)` with
+`urlPattern` (a Playwright route glob/RegExp/URL predicate) and optional `method`.
+The action can finish before PHP responds; capture still waits for the breakpoint.
+Each page can have one capture setup in progress; different pages can capture
+concurrently. The capture deadline ends when the paused handle returns.
+`finished({timeout, signal})` waits for the action without resuming PHP.
+`close()` releases its PHP session and routing, and is shared by repeated calls.
+The fixture also closes all captures at teardown.
+
+After selecting the first request, the route passes subsequent requests through.
+Physical route removal happens when the capture closes: disabling Chromium
+interception during a paused navigation can wait for PHP's response. Failed setup
+releases PHP before removing routing. Cleanup is bounded and retains the original
+action/setup error if route cleanup also fails. A cleanup error is attached as
+`error.cleanupError`. Helper waits can be aborted; an arbitrary user callback's
+promise cannot be forcibly cancelled without taking ownership of its page.
+
+Configure source roots through Playwright options when local and PHP paths differ:
+
+```js
+test.use({
+  xdebugPathMappings: [{local: 'C:\\Site', remote: 'file:///var/www/html'}],
+});
+// session.setBreakpoint('C:\\Site\\src\\Checkout.php', 42)
+```
+
+Mappings are lexical, support Windows/UNC paths on Linux, and use the longest
+matching directory root. Ambiguous mappings and unmapped outgoing local paths
+fail explicitly. Explicit `file:` and `dbgp:` engine URIs bypass outbound mapping.
+Results include `fileUri` (engine URI), `localFile`, and `pathMappingError`; `file`
+remains a convenient server path for compatibility with the initial fixture.
+`xdebugBaseDir` supplies the base for relative local paths, otherwise the process
+working directory is used. Standalone callers can construct a `PathMapper` and
+pass it as `pathMappings`. JS options replace Python TOML discovery.
+
+| Method | Behaviour |
+| --- | --- |
+| `xdebug.waitForSession({url, method, timeout, signal})` | Claim a matching request. AbortSignal cancellation removes the waiter. |
+| `session.setBreakpoint(file, line, {condition, temporary, hitValue, hitCondition, state})` | Returns an opaque breakpoint ID; use a PHP-server path or file URI. |
+| `session.setExceptionBreakpoint(className = '*')` | Break on an exception. |
+| `session.removeBreakpoint(id)` | Remove a breakpoint. |
+| `session.getBreakpoint(id)`, `breakpoints()`, `updateBreakpoint(id, options)` | Mapped engine records, hit/state/line updates and a copied `knownBreakpoints` inventory. |
+| `session.runUntilBreak({timeout})` | Return while PHP is paused; release and throw if execution finishes first. |
+| `session.run()`, `stepInto()`, `stepOver()`, `stepOut()` | Wait for the next execution result. Options accept a timeout in milliseconds. |
+| `session.waitForPause({timeout, signal})` | Recover the eventual pause after an earlier execution wait timed out, within this test. |
+| `session.stack()` | Frames with level, function location, server file and line. |
+| `session.stack({frame})`, `stackDepth()`, `contexts({frame})` | Selected frames, nested input locations and context discovery. |
+| `session.status()`, `featureGet(name)`, `featureSet(name, value)`, `refreshCapabilities(names)`, `typeMap()` | Validated metadata, capability cache and engine type mappings. |
+| `session.locals({frame, context})` | Convenient local/context values. |
+| `session.getVariable(name, {frame, depth, context})` | Convenient values; follows direct-child pages and optionally descends. |
+| `session.getProperty(name, options)` | Structured values, raw bytes, fullnames, metadata and truncation flags. |
+| `session.getPropertyPage(name, {frame, context, page, maxData, key, address})` | One explicitly selected page, with complete targeting metadata. |
+| `session.propertyValue(name, options)`, `propertyValueInfo(name, options)` | Full raw bytes and byte-size/truncation/target metadata. |
+| `session.evaluate(php, {timeout})` | Evaluate PHP in the current frame. May have side effects. |
+| `session.setVariable(name, value, {frame, context})` | Assign an existing variable/property. Scalars, Buffers, arrays and plain objects are supported. |
+| `session.setProperty(name, expression, {frame, context, type, address})` | Explicit PHP expression/Buffer assignment, preserving payload byte length. |
+| `session.source(file, {begin, end})`, `setOutput(stream, mode)` | Mapped/virtual/current source bytes and stdout/stderr off/copy/redirect modes. |
+| `session.snapshot({variables, expressions, frame, depth, context})` | Independent JSON-safe copy of execution, stack and requested properties. Expressions may have side effects. |
+| `session.detach()` / `session.stop()` | Let PHP finish / explicitly terminate a paused request. |
+| `session.command(name, args, data, timeout)` | Raw DBGp command. Known execution commands use the same execution guards. |
+| `session.nextEvent({timeout, signal})` | Retained in-process stream/notification/stop/closed events; cancellation does not consume a later event. |
+
+All timeouts are milliseconds. A timeout abandons the caller's wait, not PHP
+execution. The session stays busy until the actual reply; `waitForPause()` can
+recover a late breakpoint. Inspection/mutation/evaluation fail immediately while
+another operation owns the session. `detach()` explicitly releases it instead.
+Streams and notifications are exposed as in-process `stream` and `notification`
+events and through `nextEvent()`. The queue defaults to 1024 events; overflow
+closes the debugger connection with an explicit protocol error. On-time evaluations
+do not generate duplicate stops. Continuations and evaluations accept an
+AbortSignal; aborting their wait preserves execution ownership until the real
+reply. There is no daemon, cross-process reconnection or event replay service.
+
+UTF-8 PHP strings become JS strings; invalid UTF-8 becomes a lossless `Buffer`.
+Safe integers become numbers; larger PHP integers become `BigInt`. `INF`, `-INF`
+and `NAN` retain their numeric meaning. `toJSONSafe(value)` (also used by snapshots)
+encodes bytes, BigInt, nonfinite and uninitialized values explicitly for JSON.
+Nonfinite or already-unsafe JS numbers are rejected on assignment; use a BigInt
+or an explicit PHP expression instead.
+
+List arrays become JS arrays, associative arrays become objects, and PHP objects
+include a convenient `__class` field. Use `getProperty` for unambiguous metadata.
+Incomplete containers return `PartialValue` instances with fetched children and
+the total count, rather than placeholder strings. Binary array keys also use
+that entry-based representation. Default depth is one; recursive reads are
+sequential, with a depth limit of 16 and at most 1024 pages per property.
+Packets default to a 16 MiB maximum. These are bounds, not a promise that reading
+a large object graph is inexpensive.
+
+The independent core is available without importing Playwright Test:
+
+```js
+const {Listener, Xdebug, toJSONSafe} = require('playwright-xdebug/core');
+```
+
+A standalone script owns its listener, browser context, debugger owner and
+cleanup explicitly. See [the standalone example](examples/standalone.js).
+Closing that script ends its debugging sessions. Cross-script retention is
+outside this package's target scope.
+
+The maintained PHP/browser and Drupal smoke suites have runnable configurations:
 
 ```sh
-ddev poetry run python scripts/check_playwright_harness.py
+ddev exec npm ci
+ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:browser
+ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:drupal
+ddev exec npm run test:compatibility
+ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:stress
+ddev exec npm run check:package
 ```
 
-See [the Playwright helper guide](docs/playwright.md) and
-[compatibility results](docs/compatibility.md).
+The PHP suite starts a temporary PHP server; the Drupal suite uses the pinned
+fixture provisioned with `ddev drupal-setup`, including real render-only mutation,
+saved Form API changes and author-autocomplete AJAX/database queries. The runtime
+matrix requires the existing cached historical Xdebug modules. The stress suite
+uses Linux PHP CLI server workers for parallel browser requests and includes a
+35-second pause. See the migration plan for the remaining coverage audit.
+Drupal caches may bypass application breakpoints; choose an executable line
+that the selected request reaches. Browser action deadlines and Playwright's
+whole-test deadline are separate from debugger deadlines and should allow the
+intended pause. Keep the browser and event loop alive until PHP is released.
 
-Ordinary async scripts can use `DebuggerSetup` to reuse a server or explicitly
-launch the installed CLI. Its context closes only its client; an owned daemon
-is stopped with `shutdown(release_sessions=True)`. The opt-in pytest plugin
-reuses existing async pages. See [Python setup](docs/python-setup.md) for shared
-TOML settings, ownership, worker isolation, and standalone/pytest examples.
-
-## Features
-
-- Concurrent PHP sessions; independent command/response matching per connection.
-- Line, conditional, exception, call/return, temporary, and hit-count breakpoint
-  requests, with get/list/update/remove operations.
-- Run, step into/over/out, detach, and explicit execution termination.
-- Stack frames, contexts, frame-aware property reads, direct-child pagination,
-  full string retrieval, PHP evaluation, scalar assignment, and source retrieval.
-- Status, stack depth, type maps, capability discovery, and postmortem inspection
-  where advertised by the engine.
-- Standard and extended properties; typed scalars and binary-safe strings.
-- Separate stream, notification, stopped, and connection-closed events.
-- Structured breakpoint/error notifications and retained protocol metadata.
-- DBGp proxy registration, unregister, and structured proxy errors.
-- Standard input and interactive shells where advertised by the engine.
-- Optional expression/code execution and spawnpoint management with capability
-  checks; see [optional commands](docs/optional-commands.md).
-- Configurable local/remote path mappings, including Windows paths on Linux
-  servers, project configuration, and local locations in snapshots/events.
-- Bounded incoming packets/events, command timeouts, cancellation, and cleanup.
-- Persistent HTTP/JSON server, async client, CLI, session IDs, and replayable
-  stream/notification/stop events.
-
-See [the API guide](docs/api.md) for state/lifetime rules and Xdebug limitations.
-
-## Install and test
-
-Prepare a local artifact for testing or manual sharing with
-`./scripts/release.sh`. It wraps the distribution validator, builds wheel/source
-artifacts and checks fresh installs without running the full test suite or
-uploading anything. See [manual handoff and upload](docs/releasing.md#manual-upload)
-for the next step. Run the broader tests separately when you choose.
-
-To share a candidate on GitHub, use
-`poetry run python scripts/github_release.py CANDIDATE --tag TAG`.
-It uploads the checked files to a draft prerelease with consumer install notes;
-`--dry-run` previews it and `--publish` publishes immediately. See the
-[GitHub release steps](docs/releasing.md#github-release-command) for committing,
-tagging and making the download available to consumers.
-
-An artifact installation needs neither Poetry nor the development fixtures:
-
-```sh
-python -m pip install /absolute/path/dbgpilot-0.1.1-py3-none-any.whl
-dbgpilot --version
-```
-
-The [installation guide](docs/installation.md) also covers source installs,
-optional browser/pytest tools, PHP/Xdebug routing, and a standalone local PHP
-walkthrough that reconnects after closing its first client. For development:
-
-```sh
-poetry install
-poetry run pytest -m "not integration"
-poetry build
-```
-
-The development dependencies are pytest, pytest-asyncio, Hypothesis, Playwright,
-and pylint. Browser installation is separate (`ddev test-setup`).
-
-## DDEV integration harness
-
-The included PHP 8.4 site has Xdebug enabled and Python 3.13/Poetry available.
-
-```sh
-ddev start
-ddev test-setup
-ddev poetry run pytest -m integration
-# Run every test, including the TCP peer tests, inside DDEV:
-ddev poetry run pytest
-# Runnable HTTP debugging example, with breakpoint and completion JSON events:
-ddev poetry run python scripts/check_harness.py
-```
-
-The site is at https://xdebug.ddev.site. Use `SAVE10` in the form to subtract £10
-from a £100 order. `/health.php` reports the PHP-FPM runtime;
-`/?code=SAVE10&format=json` returns the calculation.
-
-Xdebug points to **127.0.0.1:9003 inside the web container**. Start DBGpilot before
-triggering a request with `XDEBUG_TRIGGER=1` as a query parameter or cookie.
-The Playwright helper routes the first matching request with a unique trigger
-and IDE key, leaving subsequent requests unmodified.
-The project directory is `/var/www/html` in the container.
-
-To listen from the host, change `xdebug.client_host` in `.ddev/php/xdebug.ini` to
-`host.docker.internal` and restart DDEV. Pass server-side file URIs to breakpoint
-operations. Configure directory roots in `dbgpilot.toml` or with
-`--path-map LOCAL REMOTE` to use local source paths. Results retain engine URIs
-and include mapped local paths. See [path mappings](docs/path-mapping.md) for
-configuration and diagnostics, and [proxies and optional shells](docs/proxies-and-shells.md) for proxy
-registration, stdin, and interactive command APIs.
-
-The host uses `.venv/`. `ddev poetry` uses a separate environment in DDEV's
-persistent cache, so macOS and Linux packages do not mix. Live integration tests
-skip outside DDEV. TCP peer tests need permission to bind local listening sockets.
-
-Architecture, test strategy, and source references: [development notes](docs/development.md).
-Spec audit and implementation checklist: [TODO.md](TODO.md).
-
-## Drupal 11 target
-
-A separate pinned Drupal 11.4.11 site exercises actual core rendering, Form API
-database saves, and author-autocomplete AJAX through Chromium and Xdebug:
-
-```sh
-ddev drupal-setup
-ddev test-setup
-ddev drupal-test
-```
-
-Open https://dbgpilot-drupal11.ddev.site; fixture login is
-`admin` / `dbgpilot-admin`. Its own database is separate from the checkout site.
-See [the Drupal guide](docs/drupal.md) for setup, manual debugging, path mappings,
-recorded results, and the observed render-Fiber stack behaviour.
-
-## References and provenance
-
-While building DBGpilot, we consulted the
-[DBGp specification](https://xdebug.org/docs/dbgp),
-[Xdebug's implementation](https://github.com/xdebug/xdebug), and these debugger
-projects as design and interoperability references:
-
-- [Komodo Python DBGp](https://github.com/agroszer/komodo-python3-dbgp)
-- [Vdebug](https://github.com/vim-vdebug/vdebug)
-- [Pugdebug](https://github.com/Mte90/pugdebug)
-
-The three debugger projects were initially included as development references.
-Their dependencies, associated Qt packages, and vendored snapshots have since
-been removed. DBGpilot is an original implementation that runs and is tested
-independently; no implementation code from those projects is copied, imported,
-or bundled.
-
-See [NOTICE.md](NOTICE.md) for provenance and the
-[development notes](docs/development.md#design-references-and-provenance) for the
-specific revisions and topics consulted.
+The standalone example takes `DBGPILOT_SCRIPT_URL`, `DBGPILOT_SCRIPT_FILE`, and
+`DBGPILOT_SCRIPT_LINE`, with optional `DBGPILOT_SCRIPT_HOST`,
+`DBGPILOT_SCRIPT_PORT` and `DBGPILOT_SCRIPT_IDEKEY`. These names are specific to
+this example; `DEBUG_FILE` is reserved by Playwright for debug logging.

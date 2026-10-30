@@ -1,6 +1,7 @@
 # Python test migration inventory
 
-Every existing `tests/test_*.py` file is accounted for below. This is a coverage
+Every historical `tests/test_*.py` file is accounted for below. The files
+are preserved on [archive/python](https://github.com/djotto/DBGpilot/tree/archive/python/tests). This is a coverage
 plan, not a declaration of equivalent coverage. A file marked partial contains
 some behaviour exercised by the JS foundation; its other cases still need review.
 Counts of parametrized pytest cases are not a migration target.
@@ -40,7 +41,7 @@ Counts of parametrized pytest cases are not a migration target.
 | `test_server_hosts.py` | Retire/adapt | HTTP auth/host checks retire; listener address/bind coverage remains relevant. |
 | `test_server_retention.py` | Retire | No daemon-retained session history; test in-process pruning instead. |
 | `test_release.py` | Migrated/adapted | Actual npm tarball payload, license, installed bytes, fresh external consumers, CJS/ESM exports and installed TypeScript checks pass in `check_js_package.mjs`. Wheel/source build-specific assertions retire. No npm reproducible-build claim is made. |
-| `test_github_release.py` | Review at cutover | Current uploader is Python-wheel specific; replace artifact assumptions if continuing GitHub Releases. |
+| `test_github_release.py` | Retire/adapt | Python uploader is archived. Local JS artifact/consumer checks replace wheel assumptions; GitHub publication remains a documented manual step. |
 
 The supplied five JS Drupal proof tests are separate from `test_drupal.py`.
 They now run against this repository as initial smoke coverage (five passed);

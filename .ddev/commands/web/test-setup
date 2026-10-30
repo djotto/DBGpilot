@@ -5,6 +5,8 @@
 ## Example: "ddev test-setup"
 
 set -euo pipefail
-/mnt/ddev_config/commands/web/poetry install --no-interaction
-/mnt/ddev_config/commands/web/poetry run playwright install --with-deps chromium
-/mnt/ddev_config/commands/web/poetry run python scripts/prepare_test_runtimes.py
+cd /var/www/html
+export PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright
+npm ci
+npx playwright install --with-deps chromium
+node scripts/prepare_test_runtimes.mjs

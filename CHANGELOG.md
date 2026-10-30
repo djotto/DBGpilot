@@ -1,6 +1,27 @@
 # Changelog
 
-## 0.1.0 — Unreleased
+## 0.1.1 — Unreleased
+
+Patch update for the GitHub testing prerelease channel. Stable/package-index
+publication remains pending.
+
+- Avoid duplicate stop events and event-queue overflow after ordinary evaluation
+  replies, while retaining recovery events for abandoned evaluations.
+- Preserve empty PHP arrays when the engine typemap maps arrays to `hash`.
+- Accept authenticated hostname listeners and bind resolved IPv4/IPv6 addresses
+  using the appropriate socket family.
+- Decode binary evaluation arguments through the HTTP API and preserve
+  surrogateescaped bytes and byte lengths in assignment expressions.
+- Report malformed context IDs as protocol errors rather than caller errors.
+- Prune closed-session history on lifecycle changes instead of every event.
+- Return HTTP 500/503 for failed `/health` operations while preserving ordinary
+  RPC error responses and successful health checks.
+- Remove redundant stdin acknowledgement validation; response validation remains
+  in the dispatcher.
+- Retain Drupal browser diagnostics for future failures, including traces,
+  request events, page snapshots and resource samples.
+
+## 0.1.0 — Testing prerelease (2026-10-28)
 
 Stable/package-index publication is pending. A testing prerelease was published
 on 2026-10-28 as

@@ -1,7 +1,7 @@
 # Version and compatibility policy
 
-The current package version is **0.1.0**, available as GitHub testing prerelease
-[v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1).
+The current package version is **0.1.1**, available as GitHub testing prerelease
+[v0.1.1-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.1-testing.1).
 Stable/package-index publication remains pending.
 The source version, Poetry metadata, `dbgpilot.__version__`, CLI `--version`
 and server health/readiness must agree. Validation fails if they disagree.

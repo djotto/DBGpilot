@@ -20,7 +20,7 @@ Activate your project's existing virtual environment, then install the downloade
 wheel. Retain compatible test dependencies already supplied by your project:
 
 ```sh
-python -m pip install /absolute/path/dbgpilot-0.1.0-py3-none-any.whl
+python -m pip install /absolute/path/dbgpilot-0.1.1-py3-none-any.whl
 python -m pip install 'pytest>=8.3,<10' 'pytest-asyncio>=1,<2' 'playwright>=1.64,<2'
 python -m playwright install chromium
 dbgpilot --version
@@ -86,8 +86,8 @@ The source archive supplied alongside the wheel contains
 [`examples/consumer/`](../examples/consumer/). Unpack it to obtain the example:
 
 ```sh
-tar -xzf /absolute/path/dbgpilot-0.1.0.tar.gz
-cp -R dbgpilot-0.1.0/examples/consumer ./dbgpilot-smoke
+tar -xzf /absolute/path/dbgpilot-0.1.1.tar.gz
+cp -R dbgpilot-0.1.1/examples/consumer ./dbgpilot-smoke
 ```
 
 Run this from your consuming project's directory. The test imports the installed

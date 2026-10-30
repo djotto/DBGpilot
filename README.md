@@ -12,8 +12,8 @@ from the same Python script was my main goal.
 An asynchronous Python controller for Xdebug's DBGp protocol. Python 3.12/3.13,
 MIT licensed, with no runtime dependencies outside the standard library.
 
-Current version: **0.1.0, testing prerelease**. Download the wheel/source from
-[GitHub Release v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1)
+Current version: **0.1.1, testing prerelease**. Download the wheel/source from
+[GitHub Release v0.1.1-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.1-testing.1)
 and follow the [first-breakpoint guide](docs/installation.md).
 For an existing pytest / async Playwright project, start with the
 [consumer quickstart](docs/consumer-quickstart.md) and copyable minimal example.
@@ -157,7 +157,7 @@ tagging and making the download available to consumers.
 An artifact installation needs neither Poetry nor the development fixtures:
 
 ```sh
-python -m pip install /absolute/path/dbgpilot-0.1.0-py3-none-any.whl
+python -m pip install /absolute/path/dbgpilot-0.1.1-py3-none-any.whl
 dbgpilot --version
 ```
 

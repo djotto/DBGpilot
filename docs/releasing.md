@@ -1,6 +1,6 @@
 # Rehearse and hand off a release
 
-This process prepares **unpublished DBGpilot 0.1.0 candidate artifacts**. It does
+This process prepares **unpublished DBGpilot 0.1.1 candidate artifacts**. It does
 not choose CI hosting, schedule jobs, upload packages, create tags or obtain
 credentials. Publication is a separate operator-authorized step. While testing,
 build and share candidates manually; a passing full suite and hosted CI are not
@@ -138,8 +138,8 @@ For local testing, install the wheel straight from the candidate directory. To
 share it, upload these three files from **one successful run** to your chosen
 download host, release attachment area or shared folder:
 
-- `dbgpilot-0.1.0-py3-none-any.whl`
-- `dbgpilot-0.1.0.tar.gz` (includes the quickstart and copyable pytest example)
+- `dbgpilot-0.1.1-py3-none-any.whl`
+- `dbgpilot-0.1.1.tar.gz` (includes the quickstart and copyable pytest example)
 - `SHA256SUMS`
 
 Keep `validation.json`, inventories and logs locally. Review its `checks` to see
@@ -172,15 +172,15 @@ then build with `./scripts/release.sh`. Use the successful run's candidate path.
 Create and push a unique testing tag for that same commit:
 
 ```sh
-git tag v0.1.0-testing.1
-git push origin v0.1.0-testing.1
+git tag v0.1.1-testing.1
+git push origin v0.1.1-testing.1
 ```
 
 Preview the upload locally:
 
 ```sh
 poetry run python scripts/github_release.py "$candidate" \
-  --tag v0.1.0-testing.1 --dry-run
+  --tag v0.1.1-testing.1 --dry-run
 ```
 
 The command verifies the successful packaging/install report, source manifest
@@ -195,7 +195,7 @@ equivalence.
 Upload those files to a **draft prerelease** for review:
 
 ```sh
-poetry run python scripts/github_release.py "$candidate" --tag v0.1.0-testing.1
+poetry run python scripts/github_release.py "$candidate" --tag v0.1.1-testing.1
 ```
 
 This writes `GITHUB_RELEASE_NOTES.md` alongside the candidate and invokes
@@ -206,7 +206,7 @@ and does not create/push commits or tags. Full-suite results are optional.
 Publish that draft from the GitHub UI, or run:
 
 ```sh
-gh release edit v0.1.0-testing.1 --repo djotto/DBGpilot --draft=false
+gh release edit v0.1.1-testing.1 --repo djotto/DBGpilot --draft=false
 ```
 
 To create a published prerelease immediately instead of a draft, use
@@ -219,7 +219,7 @@ missing verified assets, or delete that draft before retrying.
 The generated release notes give consumers a command like:
 
 ```sh
-python -m pip install 'https://github.com/djotto/DBGpilot/releases/download/v0.1.0-testing.1/dbgpilot-0.1.0-py3-none-any.whl'
+python -m pip install 'https://github.com/djotto/DBGpilot/releases/download/v0.1.1-testing.1/dbgpilot-0.1.1-py3-none-any.whl'
 ```
 
 That URL starts working after publication. The notes include its wheel hash as
@@ -235,11 +235,11 @@ date and manual checks in your release notes. The validator's `publication`
 fields describe its local build time; it does not track subsequent manual
 uploads. Keep a separate sharing record instead of treating them as live status.
 
-Repeated testing builds currently keep package version `0.1.0`. To replace that
-version in a test environment, explicitly install the new file:
+Published patch updates receive a new package version, currently `0.1.1`.
+When retrying a testing build with the same version, explicitly install the new file:
 
 ```sh
-python -m pip install --force-reinstall --no-deps /path/to/new/dbgpilot-0.1.0-py3-none-any.whl
+python -m pip install --force-reinstall --no-deps /path/to/new/dbgpilot-0.1.1-py3-none-any.whl
 ```
 
 Restart any daemon you intend to upgrade; installing a wheel does not replace a

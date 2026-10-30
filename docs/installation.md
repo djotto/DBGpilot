@@ -1,8 +1,8 @@
 # Install and reach a first breakpoint
 
-DBGpilot 0.1.0 is available as a **GitHub testing prerelease**. Download its
+DBGpilot 0.1.1 is available as a **GitHub testing prerelease**. Download its
 verified wheel or source archive from
-[v0.1.0-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.0-testing.1).
+[v0.1.1-testing.1](https://github.com/djotto/DBGpilot/releases/tag/v0.1.1-testing.1).
 Package-index publication remains pending. The core supports async Python 3.12
 and 3.13 and has no third-party runtime dependencies. PHP/Xdebug and browser
 tools are installed separately.
@@ -17,12 +17,12 @@ Create an environment using either supported Python version:
 ```sh
 python3.12 -m venv .venv-dbgpilot
 . .venv-dbgpilot/bin/activate
-python -m pip install /absolute/path/dbgpilot-0.1.0-py3-none-any.whl
+python -m pip install /absolute/path/dbgpilot-0.1.1-py3-none-any.whl
 dbgpilot --version
 python -c 'import dbgpilot; print(dbgpilot.__version__)'
 ```
 
-Both version commands print 0.1.0. On Windows, use the environment's
+Both version commands print 0.1.1. On Windows, use the environment's
 `Scripts/python.exe`/activation command instead of POSIX activation. The tested
 live harness is Linux/DDEV; the release report records each validation platform
 and interpreter rather than claiming every OS is tested.
@@ -30,7 +30,7 @@ and interpreter rather than claiming every OS is tested.
 Source installation uses the same core API:
 
 ```sh
-python -m pip install /absolute/path/dbgpilot-0.1.0.tar.gz
+python -m pip install /absolute/path/dbgpilot-0.1.1.tar.gz
 ```
 
 Building from source temporarily needs the pinned `poetry-core==2.1.1` backend;
@@ -61,8 +61,8 @@ Unpack the source archive to obtain its maintained example, keeping the wheel
 installed in the environment above:
 
 ```sh
-tar -xzf /absolute/path/dbgpilot-0.1.0.tar.gz
-python dbgpilot-0.1.0/examples/first_breakpoint.py --launch --php php
+tar -xzf /absolute/path/dbgpilot-0.1.1.tar.gz
+python dbgpilot-0.1.1/examples/first_breakpoint.py --launch --php php
 ```
 
 The example writes a temporary six-line PHP calculation, explicitly launches

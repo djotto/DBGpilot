@@ -9,7 +9,7 @@ configured interpreter. It requires Python 3.12 or 3.13 and only the standard
 library. Install Playwright and its browsers separately for browser scripts:
 
 ```sh
-python -m pip install dist/dbgpilot-0.1.0-py3-none-any.whl playwright
+python -m pip install dist/dbgpilot-0.1.1-py3-none-any.whl playwright
 python -m playwright install chromium
 ```
 

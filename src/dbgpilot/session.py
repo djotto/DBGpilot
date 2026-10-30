@@ -681,8 +681,6 @@ class Session:
             if data is not None and not self.stdin_redirected:
                 raise SessionStateError("Enable stdin redirection before sending input")
             node = await self.command("stdin", {"c": mode}, data, timeout=timeout, _stdin_mode=mode)
-            if node.get("success") not in {"0", "1"}:
-                raise ProtocolError("stdin response requires a success flag")
             return node.get("success") == "1"
 
     async def set_stdin(self, enabled=True, *, timeout=_DEFAULT) -> bool:

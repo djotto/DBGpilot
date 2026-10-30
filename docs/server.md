@@ -285,9 +285,12 @@ Success: `{"jsonrpc":"2.0","id":"request-uuid","result":...}`.
 Failure: `{"jsonrpc":"2.0","id":"request-uuid","error":{"code":...,"message":"...","data":...}}`.
 Request IDs must be strings or integers; JSON-RPC batches and no-ID
 notifications are not implemented. Use unique request IDs for correlation.
-HTTP application responses use status 200, including structured debugging
+HTTP RPC responses use status 200, including structured debugging
 errors; malformed JSON, authorization, and request framing use HTTP errors.
-`GET /health` returns a plain health object.
+`GET /health` returns a plain health object with status 200 on success. If the
+health operation fails, it returns the structured RPC error with status 500,
+or 503 when the server is unavailable. Health reports the API's own state;
+it does not probe the PHP application.
 
 Global methods: `health`, `sessions`, `errors`, `wait_for_session`,
 `cancel_request(request_id=...)`, `proxy.register`, `proxy.unregister`, and

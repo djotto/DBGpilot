@@ -759,4 +759,7 @@ class _Handler(BaseHTTPRequestHandler):
             except FutureCancelledError:
                 self._send(503, _error_response(None, ConnectionClosed("Server closed")))
                 return
-        self._send(200, response.get("result", response) if plain else response)
+        status = 200
+        if plain and "error" in response:
+            status = 503 if response["error"]["code"] == -32006 else 500
+        self._send(status, response.get("result", response) if plain else response)

@@ -14,6 +14,8 @@ As work is completed, update the corresponding `[ ]` to `[x]` in this file.
 Check off an item only after its stated implementation or verification is
 complete, with appropriate tests. Existing test coverage does not establish full
 protocol conformance. Keep engine limitations separate from controller gaps.
+Use `[-]` for findings explicitly declined or left unchanged; this does not
+mean the proposed change was implemented.
 
 ## Core commands — section 7
 
@@ -404,8 +406,9 @@ PHP remains paused across client calls. A TypeScript rewrite is outside this pla
 Python usability and the fresh protocol/lifecycle review are complete.
 Recommended next steps: write the skill against the settled Python API, then
 finish release preparation. Completion status is recorded below;
-the completed audit above remains a record of earlier work. The last full-suite
-baseline is 514 passing tests, including the required Drupal fixture.
+the completed audit above remains a record of earlier work. The latest full-suite
+baseline is 628 passing tests on 2026-10-30, including the required Drupal fixture.
+The 2026-10-29–30 review below records the subsequent fixes and decisions.
 
 ### Follow-up code review (2026-10-27)
 
@@ -491,6 +494,141 @@ exited. Stabilizing the host test deadlines and failure-path test cleanup remain
 a separate verification follow-up; these host runs do not replace the passing
 required DDEV check or establish a passing host fast suite.
 
+### Follow-up code review (2026-10-29–30)
+
+Consolidated from the former `POTENTIAL-BUGS.md` review against commit
+`3836661`. The original item numbers are retained as PB01–PB12.
+Nine fixes or cleanups are complete, two changes were explicitly declined,
+and one path-mapping design decision remains open. Descriptions below record
+the original failure and current outcome rather than proposing completed work
+again. Source references use symbols/files instead of obsolete line numbers.
+
+- [x] **PB01 — Defect: avoid duplicate stops for on-time evaluations.**
+  Status-less `eval`, `expr`, and `exec` replies previously emitted an extra
+  `StoppedEvent` for the existing pause. Repeated evaluations or snapshot
+  expressions could fill the event queue and close the session; HTTP consumers
+  could mistake the extra events for new pauses. `Session._dispatch_response`
+  now identifies abandoned waits, including already-cancelled futures, and
+  `_finish_execution` emits the recovery stop only for abandoned evaluations.
+  Ordinary evaluation restores inspectability without publishing another stop.
+  Coverage: [evaluation events](tests/test_evaluation_events.py), including
+  repeated calls, snapshots, event cursors, late replies, and real step events.
+- [x] **PB02 — Defect: preserve empty arrays after loading a typemap.**
+  Mapping PHP `array` to the DBGp common type `hash` previously sent empty
+  arrays through scalar decoding, producing `value == ''` and `raw_value == b''`.
+  `parse_property` now treats `hash` as non-scalar: an empty array retains its
+  array type with `value` and `raw_value` set to `None`; empty strings remain
+  empty strings. Coverage: [property decoding](tests/test_properties.py) and
+  [conformance](tests/test_conformance.py), with standard/extended properties,
+  typemaps, nested arrays, and session read/evaluation paths.
+- [x] **PB03 — Defect: accept authenticated hostname listeners.**
+  `Server(host="myhost.example", token="secret")` previously raised while
+  parsing the hostname as an IP literal. Authentication is now considered
+  before literal-address validation. Startup resolves addresses and selects
+  the matching IPv4/IPv6 socket family, trying resolved bind candidates and
+  preserving no-token loopback restrictions. Coverage:
+  [listener hosts](tests/test_server_hosts.py), including DNS failure cleanup,
+  real HTTP requests, both address families, and unauthenticated-host controls.
+- [ ] **PB04 — Design decision: allow overrides by remote mapping root?**
+  `PathMapper.with_overrides` replaces a rule only when the normalized local
+  root matches. Given `./src -> file:///var/www/html`, a CLI override from
+  `./other` to that same remote root retains both rules and fails with
+  `Duplicate remote mapping root`. This matches the documented contract in
+  [path mapping](docs/path-mapping.md), so it is not a confirmed implementation
+  defect. Decide whether to extend overrides to replace matching remote roots
+  too; such a change should use the mapper's normalized remote-key comparison
+  and retain ambiguity checks. Editing the configured mapping or using
+  `--no-config` already permits selecting another checkout. No behaviour change
+  has been approved or implemented for this item.
+- [x] **PB05 — Defect: decode binary evaluation arguments over HTTP.**
+  Client `bytes` arguments use a base64 JSON envelope. The server previously
+  left `evaluate`'s envelope as a dictionary, causing an encoding `TypeError`
+  reported as invalid caller parameters. The server now decodes `evaluate`'s
+  `expression`, sharing binary handling with `expr`'s `expression` and `exec`'s
+  `code`. `Session.evaluate` also declares `str | bytes`.
+  Coverage: [binary evaluation](tests/test_binary_evaluation.py), including
+  local/HTTP calls, UTF-8 and arbitrary bytes, NUL/empty payloads, explicit
+  envelopes, engine errors, and malformed-envelope rejection.
+- [x] **PB06 — Defect: round-trip preserved bytes in assignment expressions.**
+  `property_set` previously rejected engine-native expression strings containing
+  surrogateescaped bytes with `UnicodeEncodeError` before sending a command.
+  It now encodes text with `utf-8` and `surrogateescape`, retaining pre-encoding
+  and `len(raw)` so DBGp's payload length counts bytes. This was a write-path
+  inconsistency: reading a non-UTF-8 PHP value already returns raw `bytes`, and
+  passing raw bytes to `property_set` already worked. Eight cases in
+  [conformance](tests/test_conformance.py), under
+  `test_property_set_preserves_payload_bytes_and_byte_length`, verify exact
+  wire bytes/lengths for text and bytes, including mixed UTF-8/non-UTF-8/NUL data.
+- [x] **PB07 — Defect: classify malformed context IDs as protocol errors.**
+  Missing or invalid `context_names` IDs previously escaped as `TypeError` or
+  `ValueError`, so HTTP clients received `-32602` as though their arguments
+  were invalid. `Session.contexts` now raises `ProtocolError`; HTTP clients
+  receive `-32005`. Coverage: [context names](tests/test_context_names.py), with
+  missing, empty, nonnumeric, and fractional IDs over local/HTTP calls, valid
+  IDs/names, empty replies, and a control preserving genuine caller errors.
+- [x] **PB08 — Efficiency: prune closed records on lifecycle changes.**
+  `_collect_events` previously scanned all session records and sorted closed
+  records under the shared condition lock for every event. It now prunes on
+  `ClosedEvent`, retaining the existing cleanup when a session is registered.
+  [Retention regressions](tests/test_server_retention.py) count record visits
+  during ordinary events and verify eviction order, terminal events, retention
+  limits of zero/one/three, and preservation of live sessions. The two scan
+  cases failed before the fix and passed unchanged afterward.
+  [Event collector benchmark](scripts/benchmark_event_collection.py): seven
+  measured samples of 20,000 prebuffered events per case showed about 3.5x
+  throughput with 128 closed sessions retained (5.4–6.2 seconds before,
+  1.5–1.7 seconds after). No-history timings varied; this does not establish
+  a 3.5x speedup for a complete debugging workflow. Raw samples and methodology
+  are in `test-results/pruning-benchmark/`.
+- [-] **PB09 — Declined: pipeline capability discovery.**
+  `refresh_capabilities` currently makes 56 sequential `feature_get` queries:
+  20 feature names and 36 command names, rather than the original estimate of
+  about 38. Network round-trip latency can add to connection setup. The user
+  declined optimizing this startup cost for the intended debugging workflow.
+  Discovery remains sequential; concurrent queries or lazy capability loading
+  have not been implemented or verified against supported engines.
+- [-] **PB10 — Declined: remove duplicate record decoding/path mapping.**
+  Breakpoint/spawnpoint response handlers decode records, map paths, and update
+  inventories; public getters/listing methods then decode/map the reply again.
+  The XML document itself is parsed once, so the original claim of two XML
+  parses was inaccurate. No correctness failure was demonstrated; this is
+  efficiency/maintenance cleanup that the user chose to leave unchanged.
+  Returning the mutable inventory directly is not an established safe fix:
+  later replies or notifications can update it before a waiting method resumes.
+  Any future refactor must preserve the result belonging to the specific reply.
+- [x] **PB11 — Cleanup: validate stdin acknowledgements once.**
+  Removed the redundant success-flag check from `Session.stdin`; the response
+  handler still validates every stdin acknowledgement before the method returns.
+  No correctness defect was established in the duplicate check. Existing
+  [stdin/interaction tests](tests/test_extensions.py) verify valid/failed
+  acknowledgements, malformed replies, binary input, and cancellation/late
+  replies. The full suite passed after removal, without changing the tests.
+- [x] **PB12 — Defect: use failure HTTP statuses for failed health checks.**
+  `GET /health` previously returned HTTP 200 even when the internal RPC
+  dispatcher returned a structured error. `_Handler._dispatch` now sends 500
+  for health-operation errors or 503 for `ConnectionClosed`, preserving error
+  details. Successful health checks still return plain data with HTTP 200;
+  ordinary POST RPC errors retain HTTP 200 and their structured error envelopes.
+  Health reports DBGpilot's API state and does not probe PHP or the application
+  under test. [Health regressions](tests/test_health.py): three failure cases
+  failed before the fix and passed unchanged afterward; ten cases also verify
+  success, authentication, error details, and ordinary RPC behaviour. The
+  [server guide](docs/server.md) documents the status contract.
+
+Validation (2026-10-30): **`./scripts/check.sh` passed all 628 tests with no
+failures, errors, or skips**, including required Drupal, the six PHP/Xdebug
+runtime combinations, real Chromium, proxy integration, and stress/restart
+checks. Pytest completed in 234.66 seconds. All distribution checks also passed:
+metadata/lock, archive contents, byte-reproducible builds, fresh wheel/source
+installs and HTTP/TCP probes, live PHP onboarding from both formats, and
+installed browser examples. Logs, JUnit, validation details, and the summary
+are retained in `test-results/full-check-20261030-health/`; the validated,
+unpublished candidate is
+`dist/release-candidate/20261030T033048658775Z-a17e0c52/`.
+The previously observed Drupal navigation and CLI subprocess timeouts did not
+recur in that run; their root causes have not been established. Historical test
+counts elsewhere in this file describe their dated milestones.
+
 ### 1. Polish the Python Playwright integration
 
 Goal: let an application use DBGpilot from ordinary async Python Playwright
@@ -572,9 +710,9 @@ examples ran outside the source tree against actual PHP/Chromium, captured the
 breakpoint, closed the original client, reconnected, mutated/stepped/detached,
 and verified the DOM total of £85. Poetry metadata/lock validation also passed.
 The core remains stdlib-only. The section 1 milestone recorded 447 tests,
-78.525 seconds, timestamp `2026-10-27T11:53:23.566882+00:00`. The latest full-suite
-evidence in `test-results/junit.xml` is described in section 2 below; runtime and
-Drupal evidence remain in `test-results/`. All section 1 criteria are verified.
+78.525 seconds, timestamp `2026-10-27T11:53:23.566882+00:00`. Later full-suite
+evidence is recorded in the dated review notes above; runtime and Drupal
+evidence remain in `test-results/`. All section 1 criteria are verified.
 
 ### 2. Review protocol correctness and long-running process behaviour
 
@@ -646,7 +784,8 @@ PHP/Chromium, including original-client closure and later inspection/mutation.
 Fresh core imports still require neither pytest nor Playwright, and Poetry
 metadata/lock validation passed. Runtime dependencies remain empty.
 
-Evidence: `test-results/junit.xml` records 491 tests in 80.164 seconds, timestamp
+At that milestone, `test-results/junit.xml` recorded 491 tests in 80.164 seconds,
+timestamp
 `2026-10-27T14:03:20.445051+00:00`; `test-results/review-junit.xml` records 45
 focused cases. Version evidence remains in `test-results/compatibility.json`
 and `test-results/drupal11.json`.

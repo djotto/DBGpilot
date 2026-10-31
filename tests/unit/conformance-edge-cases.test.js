@@ -182,10 +182,14 @@ test('an empty breakpoint ID never commits a partially valid replacement invento
   assert.equal(session.knownBreakpoints.old.id,'old');assert.equal(session.knownBreakpoints.valid,undefined);
 });
 for (const supported of [false,true]) for (const method of ['source','contexts','typeMap']) {
-  test(`postmortem ${method} respects advertised support ${supported}`,async t => {
+  test(`postmortem ${method} reports the engine response (support=${supported})`,async t => {
     const {session,socket} = harness(t);const feature = session.featureGet('supports_postmortem');socket.reply(0,'supported="1"',supported ? '1':'0');await feature;
     const running = session.run();socket.reply(1,'status="stopping"');await running;
-    if (!supported) {await assert.rejects(session[method](),/stopping/);assert.equal(socket.commands.length,2);}
+    if (!supported) {
+      const pending = assert.rejects(session[method](),error => error instanceof XdebugError && error.code === 5);
+      socket.reply(2,'','<error code="5"><message>Command unavailable in this state</message></error>');await pending;
+      assert.equal(socket.commands.length,3);assert.equal(session.state,'stopping');assert.equal(session.connection.closed,false);
+    }
     else {const pending = session[method]();socket.reply(2);await pending;}
   });
 }

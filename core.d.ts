@@ -66,8 +66,7 @@ export class Session extends EventEmitter {
   private constructor();
   readonly id:number;readonly init:Record<string,unknown>;readonly info:Record<string,unknown>;
   readonly paths:PathMapper;readonly label:string;readonly state:string;readonly lastResult:ExecutionResult;
-  readonly knownBreakpoints:Record<string,Breakpoint>;readonly capabilities:Record<string,Feature>;
-  readonly supportsAsync:boolean;supportsCommand(name:string):boolean;
+  readonly knownBreakpoints:Record<string,Breakpoint>;
   setBreakpoint(file?:string,line?:number,options?:BreakpointOptions):Promise<string>;
   setExceptionBreakpoint(exception?:string):Promise<string>;
   getBreakpoint(id:string):Promise<Breakpoint>;breakpoints():Promise<Breakpoint[]>;
@@ -90,7 +89,7 @@ export class Session extends EventEmitter {
   setProperty(name:string|Buffer,expression:string|Buffer,options?:{frame?:number;context?:number;type?:string;address?:string}):Promise<boolean>;
   snapshot(options?:SnapshotOptions):Promise<Snapshot>;
   featureGet(name:string):Promise<Feature>;featureSet(name:string,value:string|number|boolean):Promise<boolean>;
-  refreshCapabilities(names?:string[]):Promise<Record<string,Feature>>;
+  getCapabilities():Promise<Record<string,Feature>>;
   typeMap():Promise<{name:string;type:string;schemaType:string;attributes:Record<string,unknown>}[]>;
   status():Promise<ExecutionResult>;source(file?:string,options?:{begin?:number;end?:number}):Promise<Buffer>;
   setOutput(stream?:'stdout'|'stderr',mode?:0|1|2):Promise<boolean>;

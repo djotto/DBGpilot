@@ -166,7 +166,7 @@ pass it as `pathMappings`. JS options replace Python TOML discovery.
 | `session.waitForPause({timeout, signal})` | Recover the eventual pause after an earlier execution wait timed out, within this test. |
 | `session.stack()` | Frames with level, function location, server file and line. |
 | `session.stack({frame})`, `stackDepth()`, `contexts({frame})` | Selected frames, nested input locations and context discovery. |
-| `session.status()`, `featureGet(name)`, `featureSet(name, value)`, `refreshCapabilities(names)`, `typeMap()` | Validated metadata, capability cache and engine type mappings. |
+| `session.status()`, `featureGet(name)`, `featureSet(name, value)`, `getCapabilities()`, `typeMap()` | Validated metadata, a fresh capability inventory and engine type mappings. |
 | `session.locals({frame, context})` | Convenient local/context values. |
 | `session.getVariable(name, {frame, depth, context})` | Convenient values; follows direct-child pages and optionally descends. |
 | `session.getProperty(name, options)` | Structured values, raw bytes, fullnames, metadata and truncation flags. |
@@ -192,8 +192,9 @@ do not generate duplicate stops. Continuations and evaluations accept an
 AbortSignal; aborting their wait preserves execution ownership until the real
 reply. There is no daemon, cross-process reconnection or event replay service.
 
-Before offering a PHP request, the fixture queries engine capabilities and
-negotiates its settings. Unsupported optional settings retain the engine's defaults;
+Before offering a PHP request, the fixture checks the two transport encodings,
+applies session settings and reads the request metadata. It does not query command
+support. Unsupported optional settings retain the engine's defaults;
 unexpected engine errors and malformed responses still fail setup. Session encoding
 must remain UTF-8, with the existing lossless handling of Xdebug's Latin-1-labelled
 application bytes. Command data must remain base64. Attempts to change those
@@ -201,16 +202,20 @@ assumptions through either `featureSet()` or `command('feature_set', ...)` fail
 before reaching PHP. An engine advertising another encoding must accept the
 required setting before request metadata is evaluated.
 
-`session.supportsCommand('eval')` reports cached, advertised command support;
-unknown commands return false. `session.supportsAsync` reports the cached async
-capability, without adding an interrupt API. Fixture-created sessions have their
-capabilities loaded during setup. Session operations reject commands advertised
-as unavailable without resuming or closing PHP. `refreshCapabilities()` refreshes
-the defaults, or accepts a list of feature/command names. Unsupported queries
-reported with DBGp error 3 or 4 are retained as unavailable. Late feature replies
-still update the cache after their original wait times out. `capabilities` returns
-an independent copy of the cache. Cleanup always closes the connection, including
-when the engine cannot detach.
+Commands are attempted when called. If Xdebug cannot perform one, its
+`XdebugError` reaches the caller with the command, code and message. This also
+applies to inspection after PHP enters the `stopping` state; another continuation
+is still rejected locally. Guards against concurrent operations remain in place.
+
+`await session.getCapabilities()` queries the full inventory of known DBGp
+features and commands on every call. Each entry contains `supported`, `value`
+and `enabled`; for example, `inventory.eval.enabled` reports advertised eval
+support. Nothing is cached, and the returned inventory does not gate later
+commands. Unsupported queries reported with DBGp error 3 or 4 become
+`{supported:false, value:'', enabled:false}` entries; other failures reach the
+caller. Use `featureGet(name)` for an individual or vendor-specific feature.
+Cleanup always closes the connection when detach fails and reports the failure
+in the returned result's `releaseError` field.
 
 UTF-8 PHP strings become JS strings; invalid UTF-8 becomes a lossless `Buffer`.
 Safe integers become numbers; larger PHP integers become `BigInt`. `INF`, `-INF`

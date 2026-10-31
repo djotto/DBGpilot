@@ -11,9 +11,16 @@ async function standalone(session:Session) {
   new Session(null as never,{});
   // @ts-expect-error raw transport is not part of the public session contract
   void session.connection;
-  const canEvaluate:boolean = session.supportsCommand('eval');
-  const canInterrupt:boolean = session.supportsAsync;
+  const capabilities = await session.getCapabilities();
+  const canEvaluate:boolean = capabilities.eval.enabled;
+  const canInterrupt:boolean = capabilities.supports_async.enabled;
   void canEvaluate;void canInterrupt;
+  // @ts-expect-error capability queries always return the full inventory
+  await session.getCapabilities(['eval']);
+  // @ts-expect-error capability inventories are not cached on sessions
+  void session.capabilities;
+  // @ts-expect-error replaced by getCapabilities()
+  await session.refreshCapabilities();
   const value = await session.getVariable('$x');
   if (value instanceof PartialValue) console.log(value.totalChildren);
   const paths = new PathMapper([{local:'/work',remote:'file:///app'}]);

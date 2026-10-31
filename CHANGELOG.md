@@ -8,8 +8,10 @@
 - Capture paused navigation, form submissions and AJAX requests, with snapshots,
   inspection, mutation, stepping and source mappings.
 - Preserve binary strings, large integers, partial values and engine metadata.
-- Negotiate capabilities, validate inputs before sending commands, retain late
-  replies, and release owned requests through bounded cleanup.
+- Check transport encodings and apply settings at startup; attempt commands
+  directly and expose an uncached capability inventory through `getCapabilities()`.
+- Validate inputs before sending commands, retain late replies, and release owned
+  requests through bounded cleanup.
 - Cover PHP/Xdebug compatibility, real browser/Drupal workflows, concurrency,
   failure recovery and clean package installation.
 - Keep the retired Python implementation on

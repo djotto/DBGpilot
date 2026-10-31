@@ -82,10 +82,11 @@ try {
     test.use({xdebugPort:9003,xdebugPathMappings:[{local:'/work',remote:'file:///app'}]});
     test('typed consumer',async({page,xdebug})=>{
       const paused=await xdebug.goto(page,'http://localhost/',{variables:['$x']});
-      const canEvaluate:boolean=paused.session.supportsCommand('eval');
-      const canInterrupt:boolean=paused.session.supportsAsync;void canEvaluate;void canInterrupt;
+      const capabilities=await paused.session.getCapabilities();
+      const canEvaluate:boolean=capabilities.eval.enabled;
+      const canInterrupt:boolean=capabilities.supports_async.enabled;void canEvaluate;void canInterrupt;
+      await paused.session.setVariable('$x',42n);await paused.session.detach();
       const response=await paused.finished();if(response) expect(response.status()).toBe(200);
-      await paused.session.setVariable('$x',42n);
     });
     // @ts-expect-error a bad fixture option must be rejected by installed types
     test.use({xdebugPort:'wrong'});

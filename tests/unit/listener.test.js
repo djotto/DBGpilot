@@ -82,7 +82,7 @@ test('encoding negotiation failures reach the waiter and the listener accepts th
   assert.equal(failed.commands.some(command => command.name === 'eval'),false);
   const next = xdebug.waitForSession({timeout:1000});
   await engine(t,listener);
-  assert.equal((await next).supportsCommand('eval'),true);
+  assert.equal((await next).request.uri,'/checkout');
 });
 test('aborted wait does not claim the next matching session',async t => {
   const listener = await setup(t); const xdebug = owner(t,listener); const abort = new AbortController();

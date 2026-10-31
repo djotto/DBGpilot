@@ -47,12 +47,10 @@ test('resolved notifications update mapped inventory and preserve original engin
   assert.equal(session.knownBreakpoints.b.localFile,'/local/a.php');
   assert.equal(notification.message.filename,'file:///app/error.php'); assert.equal(notification.message.localFile,'/local/error.php');
 });
-test('features distinguish unsupported from supported zero and preserve copied cache',async t => {
+test('features distinguish unsupported from supported zero and return setting acknowledgements',async t => {
   const {session,socket} = harness(t); const feature = session.featureGet('supports_async');
   socket.reply(0,'supported="1"','0'); assert.deepEqual(await feature,{supported:true,value:'0',enabled:false});
   const set = session.featureSet('max_data',1024); socket.reply(1,'success="0"'); assert.equal(await set,false);
-  assert.equal(session.capabilities.max_data,undefined);
-  const copied = session.capabilities; copied.supports_async.value = '1'; assert.equal(session.capabilities.supports_async.value,'0');
   const unsupported = session.featureGet('nope'); socket.reply(2,'supported="0"','1'); assert.equal((await unsupported).enabled,false);
 });
 for (const invalid of [undefined,'','oops','1.5','-1']) {

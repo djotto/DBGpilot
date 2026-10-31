@@ -4,7 +4,7 @@ const {harness,property} = require('../support/peer');
 const {ProtocolError,XdebugError} = require('../../core');
 
 // A negotiated engine, including independently controllable protocol errors.
-function engine(t,{features = {},getErrors = {},settings = {},init} = {}) {
+function engine(t,{features = {},getErrors = {},settings = {},commandErrors = {},init} = {}) {
   const result = harness(t);
   if (init) Object.assign(result.session.init,init);
   const values = {encoding:'UTF-8',data_encoding:'base64',supports_async:'0',supports_postmortem:'0',
@@ -12,6 +12,7 @@ function engine(t,{features = {},getErrors = {},settings = {},init} = {}) {
   const replyError = (index,code) => result.socket.reply(index,'',`<error code="${code}"><message>Rejected</message></error>`);
   result.socket.on('command',request => {
     const index = result.socket.commands.length-1;
+    if (commandErrors[request.name]) return replyError(index,commandErrors[request.name]);
     if (request.name === 'feature_get') {
       if (getErrors[request.args.n]) return replyError(index,getErrors[request.args.n]);
       const value = Object.hasOwn(values,request.args.n) ? values[request.args.n] : '1';
@@ -27,17 +28,14 @@ function engine(t,{features = {},getErrors = {},settings = {},init} = {}) {
   return {...result,values};
 }
 
-test('preparation negotiates commands, settings and notification support before reading PHP',async t => {
+test('preparation only queries encodings, applies settings and reads request metadata',async t => {
   const {session,socket} = engine(t);
   await session.prepare();
-  assert.equal(session.supportsCommand('eval'),true);
-  assert.equal(session.supportsCommand('feature_get'),true);
-  assert.equal(session.supportsCommand('unknown'),false);
-  assert.equal(session.supportsAsync,false);
+  assert.deepEqual(socket.commands.filter(command => command.name === 'feature_get').map(command => command.args.n),['encoding','data_encoding']);
+  assert.equal(socket.commands.length,10);
   assert.deepEqual(session.request,{method:'GET',uri:'/checkout'});
   for (const name of ['max_children','max_data','max_depth','extended_properties','notify_ok','resolved_breakpoints','breakpoint_details']) {
     assert(socket.commands.some(command => command.name === 'feature_set' && command.args.n === name));
-    assert.equal(session.capabilities[name].supported,true);
   }
   assert.equal(socket.commands.at(-1).name,'eval');
 });
@@ -47,29 +45,32 @@ for (const outcome of [0,3,4]) {
     const {session,connection} = engine(t,{features:{max_depth:'2',notify_ok:'0'},settings:{max_depth:outcome,notify_ok:outcome}});
     await session.prepare();
     assert.equal(connection.closed,false);
-    assert.equal(session.capabilities.max_depth.value,'2');
-    assert.equal(session.capabilities.notify_ok.enabled,false);
-    assert.equal(session.supportsCommand('eval'),true);
+    assert.equal((await session.featureGet('max_depth')).value,'2');
+    assert.equal((await session.featureGet('notify_ok')).enabled,false);
   });
 }
 
 for (const code of [3,4]) {
-  test(`unsupported feature queries (${code}) do not prevent preparation or refresh`,async t => {
+  test(`the full inventory reports unsupported feature queries (${code}) without failing`,async t => {
     const getErrors = {source:code,supports_async:code,extended_properties:code};
     const {session,connection} = engine(t,{getErrors,settings:{extended_properties:code}});
     await session.prepare();
-    assert.deepEqual(session.capabilities.source,{supported:false,value:'',enabled:false});
-    assert.equal(session.supportsCommand('source'),false);
-    assert.equal(session.supportsAsync,false);
+    const inventory = await session.getCapabilities();
+    for (const name of Object.keys(getErrors)) assert.deepEqual(inventory[name],{supported:false,value:'',enabled:false});
     delete getErrors.source;
-    await session.refreshCapabilities(['source']);
-    assert.equal(session.supportsCommand('source'),true);
+    assert.equal((await session.getCapabilities()).source.enabled,true);
     assert.equal(connection.closed,false);
   });
 }
 
-test('unexpected negotiation errors remain visible',async t => {
+test('unexpected inventory errors are reported only when the inventory is requested',async t => {
   const {session} = engine(t,{getErrors:{source:5}});
+  await session.prepare();
+  await assert.rejects(session.getCapabilities(),error => error instanceof XdebugError && error.code === 5);
+  assert.equal(await session.evaluate('1'),'GET /checkout');
+});
+test('unexpected essential encoding query errors fail preparation',async t => {
+  const {session} = engine(t,{getErrors:{encoding:5}});
   await assert.rejects(session.prepare(),error => error instanceof XdebugError && error.code === 5);
 });
 test('unexpected setting errors remain visible',async t => {
@@ -80,8 +81,8 @@ test('unexpected setting errors remain visible',async t => {
 test('a non-UTF-8 engine must accept UTF-8 before any PHP is evaluated',async t => {
   const {session,socket} = engine(t,{features:{encoding:'ASCII',data_encoding:'none'}});
   await session.prepare();
-  assert.equal(session.capabilities.encoding.value,'UTF-8');
-  assert.equal(session.capabilities.data_encoding.value,'base64');
+  assert.equal((await session.featureGet('encoding')).value,'UTF-8');
+  assert.equal((await session.featureGet('data_encoding')).value,'base64');
   for (const name of ['encoding','data_encoding']) {
     assert(socket.commands.findIndex(c => c.name === 'feature_set' && c.args.n === name) < socket.commands.findIndex(c => c.name === 'eval'));
   }
@@ -97,13 +98,13 @@ for (const name of ['encoding','data_encoding']) for (const outcome of [0,3,4]) 
 test('Xdebug Latin-1 labels retain the lossless byte parser without forcing UTF-8',async t => {
   const {session,socket} = engine(t,{features:{encoding:'iso-8859-1'},init:{engine:{'#text':'Xdebug'}}});
   await session.prepare();
-  assert.equal(session.capabilities.encoding.value,'iso-8859-1');
+  assert.equal((await session.featureGet('encoding')).value,'iso-8859-1');
   assert.equal(socket.commands.some(c => c.name === 'feature_set' && c.args.n === 'encoding'),false);
 });
 test('unknown optional encoding features use the protocol defaults',async t => {
   const {session} = engine(t,{features:{encoding:null,data_encoding:null}});
   await session.prepare();
-  assert.equal(session.capabilities.encoding.supported,false);
+  assert.equal((await session.featureGet('encoding')).supported,false);
   assert.equal(session.request.method,'GET');
 });
 
@@ -117,50 +118,97 @@ test('typed and raw feature setters cannot change encoding assumptions',async t 
   assert.equal(await session.featureSet('encoding','utf8'),true);
   assert.equal(await session.featureSet('data_encoding','base64'),true);
 });
-test('boolean settings cache their wire value, and late capability replies update support',async t => {
-  const {session,socket} = harness(t);
-  const setting = session.featureSet('notify_ok',false);socket.reply(0,'success="1"');
-  assert.equal(await setting,true);
-  assert.deepEqual(session.capabilities.notify_ok,{supported:true,value:'0',enabled:false});
-  const refresh = session.refreshCapabilities(['supports_async']);socket.reply(1,'supported="1"','1');await refresh;
-  assert.equal(session.supportsAsync,true);
-  const late = assert.rejects(session.command('feature_get',{n:'supports_async'},undefined,5),/timed out/);
-  await late;socket.reply(2,'supported="1"','0');assert.equal(session.supportsAsync,false);
-  const unsupported = assert.rejects(session.command('feature_get',{n:'eval'},undefined,5),/timed out/);
-  await unsupported;socket.reply(3,'','<error code="4"><message>Unsupported</message></error>');
-  assert.equal(session.supportsCommand('eval'),false);
-  const lateSetting = assert.rejects(session.command('feature_set',{n:'supports_async',v:true},undefined,5),/timed out/);
-  await lateSetting;socket.reply(4,'success="1"');assert.equal(session.supportsAsync,true);
+test('getCapabilities returns the full inventory afresh without retaining a cache',async t => {
+  const {session,socket,values} = engine(t);
+  const first = await session.getCapabilities();
+  assert.equal(Object.keys(first).length,40);
+  for (const name of ['language_name','encoding','supports_async','supports_postmortem','breakpoint_types',
+    'max_data','breakpoint_details','feature_get','run','eval','property_get','property_set','source','detach','stop']) {
+    assert(Object.hasOwn(first,name),name);
+  }
+  assert.equal(socket.commands.length,40);
+  assert(socket.commands.every(command => command.name === 'feature_get'));
+  assert.deepEqual(first.supports_async,{supported:true,value:'0',enabled:false});
+  first.supports_async.value = 'changed by caller';
+  values.supports_async = '1';
+  await session.featureSet('notify_ok',false);
+  const before = socket.commands.length;
+  const second = await session.getCapabilities();
+  assert.equal(socket.commands.length-before,40);
+  assert.deepEqual(second.supports_async,{supported:true,value:'1',enabled:true});
+  assert.deepEqual(second.notify_ok,{supported:true,value:'0',enabled:false});
+  assert.equal(first.notify_ok.value,'1');
+  assert.notEqual(first,second);
+  for (const name of ['capabilities','refreshCapabilities','supportsAsync','supportsCommand']) assert.equal(name in session,false);
 });
 
-const guarded = [
+test('late feature replies do not determine whether subsequent commands are attempted',async t => {
+  const {session,socket} = harness(t);
+  await assert.rejects(session.command('feature_get',{n:'eval'},undefined,5),/timed out/);
+  socket.reply(0,'supported="1"','0');
+  const evaluated = session.evaluate('42');
+  socket.reply(1,'',property('42',{type:'int'}));
+  assert.equal(await evaluated,42);
+});
+
+const commands = [
   ['eval',s => s.evaluate('$x')],['source',s => s.source()],['stdout',s => s.setOutput()],['stderr',s => s.setOutput('stderr')],
-  ['run',s => s.run()],['step_into',s => s.stepInto()],['step_out',s => s.stepOut()],
+  ['run',s => s.run()],['step_into',s => s.stepInto()],['step_over',s => s.stepOver()],['step_out',s => s.stepOut()],
   ['property_set',s => s.setVariable('$x',1)],['stack_get',s => s.stack()],
-  ['property_get',s => s.setVariable('$x',1)],
-  ['detach',s => s.detach()],['stop',s => s.stop()],
+  ['property_get',s => s.getVariable('$x')],
 ];
-for (const [name,call] of guarded) {
-  test(`advertised unavailable ${name} is rejected without changing or releasing PHP`,async t => {
-    const {session,socket,connection} = harness(t);
-    const refresh = session.refreshCapabilities([name]);socket.reply(0,'supported="1"','0');await refresh;
-    await assert.rejects(call(session),new RegExp(`support for ${name}`));
-    assert.equal(socket.commands.length,1);
+for (const [name,call] of commands) {
+  test('unavailable '+name+' reaches Xdebug and returns its error without releasing PHP',async t => {
+    const {session,socket,connection} = engine(t,{features:{[name]:'0'},commandErrors:{[name]:4}});
+    assert.equal((await session.getCapabilities())[name].enabled,false);
+    const before = socket.commands.length;
+    await assert.rejects(call(session),error => error instanceof XdebugError && error.code === 4 && error.command === name);
+    assert.equal(socket.commands.length,before+1);
+    assert.equal(socket.commands.at(-1).name,name);
     assert.equal(session.state,'starting');
     assert.equal(connection.closed,false);
+    assert.equal((await session.featureGet('encoding')).value,'UTF-8');
   });
 }
-test('missing eval support prevents request metadata evaluation',async t => {
-  const {session,socket} = engine(t,{features:{eval:null}});
-  await assert.rejects(session.prepare(),/support for eval/);
-  assert.equal(socket.commands.some(c => c.name === 'eval'),false);
+
+test('assignment attempts verification and reports its failure as the cause',async t => {
+  const {session,socket} = harness(t);
+  const setting = assert.rejects(session.setVariable('$x',1),error => error.cause instanceof XdebugError && error.cause.code === 4);
+  socket.reply(0,'success="1"');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(socket.commands[1].name,'property_get');
+  socket.reply(1,'','<error code="4"><message>Unsupported</message></error>');
+  await setting;
 });
-test('owner cleanup still closes a connection whose engine cannot detach',async t => {
-  const {session,socket,connection} = engine(t,{features:{detach:'0'}});
-  await session.prepare();
-  const before = socket.commands.length;
-  const result = await session.release();
-  assert.match(result.releaseError,/support for detach/);
+
+test('unsupported request metadata evaluation fails preparation with the engine error',async t => {
+  const {session,socket} = engine(t,{commandErrors:{eval:4}});
+  await assert.rejects(session.prepare(),error => error instanceof XdebugError && error.code === 4);
+  assert.equal(socket.commands.at(-1).name,'eval');
+});
+test('breakpoint type advertisements do not pre-empt the actual breakpoint request',async t => {
+  const {session,socket} = engine(t);
+  assert.equal((await session.getCapabilities()).breakpoint_types.value.includes('watch'),false);
+  const creating = session.setBreakpoint(undefined,undefined,{kind:'watch',condition:'$x'});
+  assert.equal(socket.commands.at(-1).args.t,'watch');
+  socket.reply(socket.commands.length-1,'','<error code="201"><message>Unsupported breakpoint type</message></error>');
+  await assert.rejects(creating,error => error instanceof XdebugError && error.code === 201);
+});
+for (const method of ['detach','release']) {
+  test(method+' attempts detach and reports its failure while closing the connection',async t => {
+    const {session,socket,connection} = engine(t,{features:{detach:'0'},commandErrors:{detach:4}});
+    await session.prepare();
+    const before = socket.commands.length;
+    const result = await session[method]();
+    assert.match(result.releaseError,/Rejected/);
+    assert.equal(connection.closed,true);
+    assert.equal(socket.commands.length,before+1);
+    assert.equal(socket.commands.at(-1).name,'detach');
+  });
+}
+test('unsupported stop returns the engine error and still closes the connection',async t => {
+  const {session,socket,connection} = engine(t,{commandErrors:{stop:4}});
+  await assert.rejects(session.stop(),error => error instanceof XdebugError && error.code === 4);
+  assert.equal(socket.commands[0].name,'stop');
   assert.equal(connection.closed,true);
-  assert.equal(socket.commands.length,before);
 });

@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {harness,frame,property,Socket,response} = require('../support/peer');
-const {parsePacket,Connection,ProtocolError,encodeCommand,NAMESPACE} = require('../../core');
+const {parsePacket,Connection,ProtocolError,encodeCommand,NAMESPACE} = require('../../lib/dbgp');
 const {toValue} = require('../../lib/values');
 test('mixed notification body excludes child metadata and preserves raw XML',async t => {
   const {session,socket} = harness(t); const encoded = Buffer.from('before\0after').toString('base64');

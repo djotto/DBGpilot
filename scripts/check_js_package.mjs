@@ -45,17 +45,40 @@ try {
     assert.equal(core.toJSONSafe({x:9223372036854775807n}).x.value,'9223372036854775807');
     const {test,expect}=require('playwright-xdebug');
     assert.equal(typeof test,'function');assert.equal(typeof expect,'function');
+    for (const api of [core,require('playwright-xdebug')]) {
+      for (const name of ['Connection','encodeCommand','parsePacket','NAMESPACE']) assert.equal(Object.hasOwn(api,name),false,name+' must remain internal');
+    }
+    assert.throws(()=>require('playwright-xdebug/lib/dbgp'),{code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
   `],consumer);
   run(process.execPath,['--input-type=module','-e',String.raw`
     import assert from 'node:assert/strict';
     import {Listener,PathMapper} from 'playwright-xdebug/core';
     import {test,expect} from 'playwright-xdebug';
+    import * as core from 'playwright-xdebug/core';
+    import * as fixture from 'playwright-xdebug';
     assert.equal(typeof Listener,'function');assert.equal(typeof test,'function');assert.equal(typeof expect,'function');
     assert.equal(new PathMapper([{local:'/work',remote:'file:///app'}]).toRemote('/work/a.php'),'file:///app/a.php');
+    for (const api of [core,fixture]) for (const name of ['Connection','encodeCommand','parsePacket','NAMESPACE']) assert.equal(Object.hasOwn(api,name),false);
   `],consumer);
   const typed = String.raw`
     import {test,expect} from 'playwright-xdebug';
     import {PathMapper,Session} from 'playwright-xdebug/core';
+    // @ts-expect-error raw connections are internal
+    import {Connection} from 'playwright-xdebug/core';
+    // @ts-expect-error packet encoders are internal
+    import {encodeCommand} from 'playwright-xdebug/core';
+    // @ts-expect-error packet parsers are internal
+    import {parsePacket} from 'playwright-xdebug/core';
+    // @ts-expect-error protocol constants are internal
+    import {NAMESPACE} from 'playwright-xdebug/core';
+    // @ts-expect-error fixture exports also hide raw connections
+    import {Connection as FixtureConnection} from 'playwright-xdebug';
+    // @ts-expect-error fixture exports also hide packet encoders
+    import {encodeCommand as fixtureEncoder} from 'playwright-xdebug';
+    // @ts-expect-error fixture exports also hide packet parsers
+    import {parsePacket as fixtureParser} from 'playwright-xdebug';
+    // @ts-expect-error fixture exports also hide protocol constants
+    import {NAMESPACE as fixtureNamespace} from 'playwright-xdebug';
     test.use({xdebugPort:9003,xdebugPathMappings:[{local:'/work',remote:'file:///app'}]});
     test('typed consumer',async({page,xdebug})=>{
       const paused=await xdebug.goto(page,'http://localhost/',{variables:['$x']});

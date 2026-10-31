@@ -2,7 +2,9 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const net = require('node:net');
 const {once} = require('node:events');
-const {Listener,Xdebug,Session,NAMESPACE} = require('../../core');
+const {Listener,Xdebug} = require('../../core');
+const {Session} = require('../../lib/session');
+const {NAMESPACE} = require('../../lib/dbgp');
 const {frame,response,parseCommand,harness} = require('../support/peer');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 

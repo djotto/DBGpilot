@@ -1,8 +1,10 @@
-// Remaining PHP-targeted scenarios from the archived Python suite.
+// Protocol, PHP value and validation edge cases.
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {harness,Socket,frame,parseCommand,property} = require('../support/peer');
-const {Connection,Session,PathMapper,PathMappingError,NAMESPACE,ProtocolError,XdebugError,CommandTimeout,encodeCommand,parsePacket,toJSONSafe} = require('../../core');
+const {PathMapper,PathMappingError,ProtocolError,XdebugError,CommandTimeout,toJSONSafe} = require('../../core');
+const {Connection,NAMESPACE,encodeCommand,parsePacket} = require('../../lib/dbgp');
+const {Session} = require('../../lib/session');
 const {bytes,parseProperty,toValue} = require('../../lib/values');
 const {encodeBytes,decodeBytes} = require('../../lib/encoding');
 function random(seed) {

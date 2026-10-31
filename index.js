@@ -4,7 +4,6 @@
 const { test: base, expect } = require('@playwright/test');
 const { randomBytes } = require('crypto');
 const { Listener, Xdebug } = require('./lib/listener');
-const { XdebugError } = require('./lib/dbgp');
 const core = require('./core');
 
 const test = base.extend({
@@ -40,4 +39,4 @@ const test = base.extend({
   },
 });
 
-module.exports = { ...core, test, expect, XdebugError };
+module.exports = { ...core, test, expect };

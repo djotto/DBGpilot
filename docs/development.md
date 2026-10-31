@@ -44,9 +44,3 @@ Reports, traces and screenshots are under `test-results/`. The package check
 builds an allowlisted tarball, installs it outside the repository, compares its
 bytes and checks CommonJS, ESM and installed TypeScript consumers. Its report is
 `test-results/js-package-validation.json`; the candidate is under `dist/js-candidate/`.
-
-The Python implementation, its setup tools and its complete tests are preserved
-on [archive/python](https://github.com/djotto/DBGpilot/tree/archive/python).
-Use a separate checkout to run those tools. [The inventory](js-test-inventory.md)
-records how that coverage maps to the JS suite; unchecked scenario audits remain
-visible in [MIGRATION.md](../MIGRATION.md).

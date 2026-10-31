@@ -1,11 +1,7 @@
 # playwright-xdebug
 
-JavaScript controls for PHP/Xdebug, with a Playwright Test fixture. This is the
-JavaScript implementation of DBGpilot; see
-[the migration plan](MIGRATION.md) for completed work and remaining coverage.
-The fixture and the same-process standalone API share one debugger implementation.
-The [final test audit](docs/migration-audit.md) records coverage and deliberate
-retirements; acceptance in the actual consuming environment remains outstanding.
+JavaScript controls for PHP/Xdebug, with a Playwright Test fixture.
+The fixture and standalone Node API share one debugger implementation.
 
 From this repository:
 
@@ -263,7 +259,7 @@ The integration suite checks stepping,
 exact hit counts, binary stdout routing and evaluation-error recovery across the
 same six runtimes. Its report is `test-results/integration-js.json`. The stress suite
 uses three independent PHP servers for parallel browser requests and includes a
-35-second pause. See the migration plan for the remaining coverage audit.
+35-second pause.
 Drupal caches may bypass application breakpoints; choose an executable line
 that the selected request reaches. Browser action deadlines and Playwright's
 whole-test deadline are separate from debugger deadlines and should allow the

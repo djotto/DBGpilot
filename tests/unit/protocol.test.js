@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {Connection,ProtocolError,CommandTimeout,encodeCommand,parsePacket,NAMESPACE} = require('../../core');
+const {Connection,ProtocolError,CommandTimeout,encodeCommand,parsePacket,NAMESPACE} = require('../../lib/dbgp');
 const {Socket,frame,response,property} = require('../support/peer');
 
 test('fragmented/coalesced packets preserve binary payload and byte framing',async t => {

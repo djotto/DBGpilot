@@ -1,5 +1,4 @@
 import {EventEmitter} from 'node:events';
-import {Socket} from 'node:net';
 import type {BrowserContext,Page,Response} from 'playwright';
 
 export type JSONValue = null | boolean | number | string | JSONValue[] | {[key:string]:JSONValue};
@@ -63,15 +62,9 @@ export class PathMapper {
   location(uri?:string):{localFile?:string;pathMappingError?:string};
   withOverrides(mappings:PathMapping[],options?:{baseDir?:string}):PathMapper;
 }
-export class Connection extends EventEmitter {
-  constructor(socket:Socket,options?:{maxPacketSize?:number;maxPendingCommands?:number});
-  readonly socket:Socket;readonly closed:boolean;readonly error?:Error;readonly pendingCount:number;
-  send(name:string,args?:CommandArguments,data?:string|Buffer,timeout?:number,options?:{signal?:AbortSignal}):Promise<Record<string,unknown>>;
-  close(error?:Error):void;
-}
 export class Session extends EventEmitter {
-  constructor(connection:Connection,init:Record<string,unknown>,options?:SessionOptions);
-  readonly id:number;readonly connection:Connection;readonly init:Record<string,unknown>;readonly info:Record<string,unknown>;
+  private constructor();
+  readonly id:number;readonly init:Record<string,unknown>;readonly info:Record<string,unknown>;
   readonly paths:PathMapper;readonly label:string;readonly state:string;readonly lastResult:ExecutionResult;
   readonly knownBreakpoints:Record<string,Breakpoint>;readonly capabilities:Record<string,Feature>;
   readonly supportsAsync:boolean;supportsCommand(name:string):boolean;
@@ -131,6 +124,3 @@ export class Listener extends EventEmitter {
 }
 export class PartialValue {readonly type:string;readonly classname?:string|Buffer;readonly totalChildren:number;readonly children:{name:string|Buffer;value:PHPValue}[];readonly truncated:boolean;readonly rawValue?:Buffer}
 export function toJSONSafe(value:unknown):JSONValue;
-export const NAMESPACE:'urn:debugger_protocol_v1';
-export function encodeCommand(name:string,id:number,args?:CommandArguments,data?:string|Buffer):Buffer;
-export function parsePacket(data:Buffer):{kind:string;node:Record<string,unknown>};

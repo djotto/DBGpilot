@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {harness,property,frame} = require('../support/peer');
-const {ProtocolError,NAMESPACE} = require('../../core');
+const {ProtocolError,NAMESPACE} = require('../../lib/dbgp');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 test('mapped breakpoints retain inventory through get, update, list and remove',async t => {
   const {session,socket} = harness(t,{session:{pathMappings:[{local:'/local/project',remote:'file:///app'}]}});

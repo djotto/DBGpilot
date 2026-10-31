@@ -1,10 +1,11 @@
 // Same-process controls without importing the Playwright Test runner.
+const {XdebugError,ProtocolError,ConnectionClosed,CommandTimeout} = require('./lib/dbgp');
+const {Listener,Xdebug} = require('./lib/listener');
+const {Session} = require('./lib/session');
+const {PathMapper,PathMappingError} = require('./lib/paths');
+const {PausedBrowser} = require('./lib/capture');
+const {PartialValue,toJSONSafe} = require('./lib/values');
 module.exports = {
-  ...require('./lib/dbgp'),
-  ...require('./lib/listener'),
-  ...require('./lib/session'),
-  ...require('./lib/paths'),
-  PausedBrowser: require('./lib/capture').PausedBrowser,
-  PartialValue: require('./lib/values').PartialValue,
-  toJSONSafe: require('./lib/values').toJSONSafe,
+  XdebugError,ProtocolError,ConnectionClosed,CommandTimeout,
+  Listener,Xdebug,Session,PathMapper,PathMappingError,PausedBrowser,PartialValue,toJSONSafe,
 };

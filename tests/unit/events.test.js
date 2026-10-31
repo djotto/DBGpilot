@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {harness,frame,property} = require('../support/peer');
-const {ProtocolError,NAMESPACE} = require('../../core');
+const {ProtocolError,NAMESPACE} = require('../../lib/dbgp');
 test('cancelled execution retains PHP ownership and publishes the real later stop',async t => {
   const {session,socket} = harness(t); const abort = new AbortController();
   const running = assert.rejects(session.run({signal:abort.signal}),/cancelled/);

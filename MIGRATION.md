@@ -42,6 +42,9 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
 - [x] Port the remaining selected real-Xdebug scenarios: stepping into/out of
   functions, exact hit counts and temporary breakpoints, stdout routing and
   recovery after an evaluation error, across all six runtime combinations.
+- [x] Port the selected failure/cleanup regressions: stalled writes, setup and
+  execution disconnects, late execution ownership, shared close after an abandoned
+  wait, slow/late route installation and preservation of primary/cleanup errors.
 - [x] Port local/remote source mappings and their cross-platform regression cases.
 - [x] Add per-action capture coordination: precise request selection, action
   failure propagation, separate action/debugger deadlines, and bounded cleanup.
@@ -197,3 +200,34 @@ The matrix profiles are shared with the compatibility smoke suite. Run with
 is recorded in ignored `test-results/integration-js.json`. No runtime API changes
 were required. Remaining conformance, failure/cleanup and diagnostic audits are
 still tracked separately.
+
+Failure/cleanup migration (2026-10-31): socket-write backpressure deadlines,
+late write errors, execution disconnects and stop-callback execution ownership
+are retained in the JS regressions. Python write-lock/cancelled-task cases adapt
+to pre-write abort checks and abandoned waits over shared JS cleanup promises.
+New setup-disconnect cases prove the listener remains usable, including a failed
+release during failed preparation. The original preparation/action error reaches
+the caller, and secondary cleanup failures are reported separately.
+
+The regressions exposed and fixed late-installed route leaks, loss of falsy
+original rejections, child-disposal errors replacing action errors, and shutdown
+returning before other captures finished. Expired routes are inert and removed
+again after late installation; cleanup waits remain bounded. Multiple close
+failures are collected, and listener shutdown closes sockets and frees its port
+even when an owner fails. Three real browser/PHP cases verify setup disposal,
+original-error preservation with retry, and DBGp socket loss during navigation.
+
+The concurrent-browser stress check also exposed PHP CLI prefork scheduling:
+one worker accepted two sockets, so pausing its first request prevented its
+second request from reaching Xdebug. The harness now starts three independent
+PHP servers on consecutive loopback HTTP ports, sharing one debugger listener.
+The three-capture case passed three consecutive repetitions after this change.
+Arbitrary action/routing promises still cannot be forcibly cancelled; their
+handling and this limitation remain in the exceptions list.
+
+Validation: 221 Node regressions (22 added for cleanup/setup), TypeScript, 19
+browser outcomes (one expected assertion failure), six compatibility profiles,
+36 live integration scenarios, eight Drupal checks and five stress checks pass.
+The early full-check run exposed the CLI-worker scheduling issue above; the
+stress job passed after that harness fix, and package validation then passed
+for the final 20-file tarball and fresh CJS/ESM/TypeScript consumers.

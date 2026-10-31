@@ -21,8 +21,9 @@ checksums before compiling. It does not change the application's PHP-FPM runtime
 The DBGp proxy is deferred and is not downloaded by setup.
 
 The browser suite starts its own PHP server on HTTP port 19434 and Xdebug port
-19433. `PW_PHP_PORT` and `PW_XDEBUG_PORT` override these. Stress tests require
-Linux PHP CLI server workers. The runtime matrix tests PHP 8.2–8.5 with the
+19433. `PW_PHP_PORT` and `PW_XDEBUG_PORT` override these. Browser stress tests
+start three independent PHP servers using the HTTP port and its next two ports.
+The runtime matrix tests PHP 8.2–8.5 with the
 installed Xdebug, plus cached PHP 8.2/Xdebug 3.3.2 and PHP 8.3/Xdebug 3.4.7.
 Missing runtimes, Chromium or Drupal sources fail their checks.
 

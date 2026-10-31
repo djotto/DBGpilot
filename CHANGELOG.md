@@ -2,6 +2,10 @@
 
 ## JavaScript 0.1.0 — unreleased
 
+- Migrate failure/cleanup regressions and fix late-installed capture routes,
+  preservation of original action errors, and complete shutdown after cleanup
+  failures. Add real-browser coverage for setup disposal and DBGp socket loss.
+
 - Port real-Xdebug stepping, hit-count/temporary breakpoint, stdout routing and
   evaluation-error recovery tests across all six PHP/Xdebug combinations. Add
   `test:integration` to the full check command and share live runtime profiles.

@@ -83,6 +83,8 @@ Run debugger specs with one worker. Every worker would otherwise try to bind
 the same Xdebug port; an IDE listener can also conflict. Separate PHP runtimes
 and ports are needed for independently configured concurrent debug workers.
 The listener can hold multiple PHP sessions within one test.
+Each paused request occupies a PHP worker; concurrent captures need enough
+independent PHP processes to reach their breakpoints.
 
 The fixture sets a unique `XDEBUG_TRIGGER` cookie for the baseURL hostname.
 `xdebug.enableFor(url)` enables another hostname. An explicit `xdebugIdeKey`
@@ -127,8 +129,13 @@ After selecting the first request, the route passes subsequent requests through.
 Physical route removal happens when the capture closes: disabling Chromium
 interception during a paused navigation can wait for PHP's response. Failed setup
 releases PHP before removing routing. Cleanup is bounded and retains the original
-action/setup error if route cleanup also fails. A cleanup error is attached as
-`error.cleanupError`. Helper waits can be aborted; an arbitrary user callback's
+action/setup error if cleanup also fails. Secondary failures are attached as
+`error.cleanupError` when the original rejection can carry metadata; multiple
+failures use an `AggregateError`. Primitive or frozen rejections are preserved.
+Owner/listener shutdown attempts all cleanup and waits for the other captures
+even when one fails, then reports collected failures. Expired routes pass requests
+through; if installation completes after the capture deadline, that exact handler
+is removed again without disturbing a retry. Helper waits can be aborted; an arbitrary user callback's
 promise cannot be forcibly cancelled without taking ownership of its page.
 
 Configure source roots through Playwright options when local and PHP paths differ:
@@ -253,7 +260,7 @@ matrix and live integration suite require the cached historical Xdebug modules.
 The integration suite checks stepping,
 exact hit counts, binary stdout routing and evaluation-error recovery across the
 same six runtimes. Its report is `test-results/integration-js.json`. The stress suite
-uses Linux PHP CLI server workers for parallel browser requests and includes a
+uses three independent PHP servers for parallel browser requests and includes a
 35-second pause. See the migration plan for the remaining coverage audit.
 Drupal caches may bypass application breakpoints; choose an executable line
 that the selected request reaches. Browser action deadlines and Playwright's

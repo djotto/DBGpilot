@@ -13,7 +13,11 @@ test('navigation stays alive for a 35-second interactive PHP pause',async ({page
 });
 test('three browser captures pause independently and releasing one leaves the others paused',async ({context,xdebug,baseURL}) => {
   const pages = await Promise.all([context.newPage(),context.newPage(),context.newPage()]);
-  const captures = await Promise.all(pages.map((page,index) => xdebug.goto(page,`${baseURL}/checkout.php?request=${index}`,{breakpoints})));
+  const captures = await Promise.all(pages.map((page,index) => {
+    const url = new URL('/checkout.php',baseURL);
+    url.port = String(Number(url.port || 80)+index);url.searchParams.set('request',index);
+    return xdebug.goto(page,url.href,{breakpoints});
+  }));
   expect(new Set(captures.map(paused => paused.session.id)).size).toBe(3);
   for (let index=0;index<captures.length;index++) {
     const paused = captures[index]; await paused.session.setVariable('$discount',10+index); await paused.session.detach();

@@ -60,3 +60,43 @@ test('dispose cancels pending capture setup and cannot deadlock inside a browser
   const rejected = expect(pending).rejects.toThrow('disposed during capture');
   await xdebug.dispose(); await rejected;
 });
+test('closing during breakpoint setup releases the real paused PHP request and settles navigation',async ({page,xdebug,baseURL}) => {
+  let entered,release,navigation;
+  const reached = new Promise(resolve => entered = resolve),gate = new Promise(resolve => release = resolve);
+  const create = xdebug.createCaptureOwner.bind(xdebug);
+  xdebug.createCaptureOwner = key => {
+    const child = create(key),track = child.track.bind(child);
+    child.track = session => {
+      const set = session.setBreakpoint.bind(session);
+      session.setBreakpoint = async (...args) => {entered();await gate;return set(...args);};
+      return track(session);
+    };
+    return child;
+  };
+  try {
+    const pending = xdebug.capture(page,() => navigation = page.goto(baseURL+'/checkout.php',{timeout:0}),{urlPattern:'**/checkout.php',breakpoints});
+    const rejected = expect(pending).rejects.toThrow('disposed during capture');
+    await reached;await xdebug.dispose();await rejected;
+    expect((await navigation).status()).toBe(200);expect(xdebug.captures.size).toBe(0);
+    release();expect((await page.goto('/checkout.php')).status()).toBe(200);
+  } finally {release();xdebug.createCaptureOwner = create;}
+});
+test('route cleanup failure retains the original action error and allows a subsequent real capture',async ({page,xdebug,baseURL}) => {
+  const original = new Error('original action error'),cleanup = new Error('route cleanup failed');
+  const unroute = page.unroute.bind(page);
+  page.unroute = async (...args) => {await unroute(...args);throw cleanup;};
+  try {
+    await expect(xdebug.capture(page,async () => {throw original;},{urlPattern:'**/checkout.php'})).rejects.toBe(original);
+    expect(original.cleanupError).toBe(cleanup);
+  } finally {page.unroute = unroute;}
+  const paused = await xdebug.goto(page,baseURL+'/checkout.php',{breakpoints});
+  await paused.close();expect((await paused.finished()).status()).toBe(200);
+});
+test('losing the DBGp socket releases a paused PHP navigation and the capture still closes',async ({page,xdebug,baseURL}) => {
+  const paused = await xdebug.goto(page,baseURL+'/checkout.php',{breakpoints});
+  const closed = new Promise(resolve => paused.session.once('close',resolve));
+  paused.session.connection.socket.destroy();await closed;
+  expect((await paused.finished()).status()).toBe(200);await paused.close();
+  expect(paused.session.state).toBe('stopped');expect(xdebug.captures.size).toBe(0);
+  expect((await page.goto('/checkout.php')).status()).toBe(200);
+});

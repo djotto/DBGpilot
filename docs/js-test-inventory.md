@@ -8,15 +8,15 @@ Counts of parametrized pytest cases are not a migration target.
 
 | Python test file | Disposition | JavaScript work |
 | --- | --- | --- |
-| `test_protocol.py` | Partial | Framing, fragmentation, quoting, binary payloads, namespace/length validation migrated to `protocol.test.js`; expand randomized/backpressure cases. |
+| `test_protocol.py` | Partial | Framing, fragmentation, quoting, binary payloads, namespace/length validation in `protocol.test.js`; stalled-write deadlines and late write errors in `cleanup.test.js`; remaining randomized-case audit pending. |
 | `test_sessions.py` | Partial | State, operation guards, errors, late replies and explicit release in `session.test.js`; command availability and feature negotiation in `features.test.js`; remaining scenario audit pending. |
 | `test_properties.py` | Partial | Binary/extended values, partial results, metadata, integers and nonfinite values in `values.test.js`; remaining format cases pending. |
 | `test_evaluation_events.py` | Migrated/adapted | On-time evaluations do not duplicate stops or overflow the retained queue; abandoned success/error restores the pause and publishes recovery; expr/exec and HTTP replay portions excluded. |
 | `test_cancellation.py` | Migrated/adapted | AbortSignal execution/wait/event cancellation retains engine ownership and future events; RPC IDs/tombstones/client reconnect portions retire. |
 | `test_binary_evaluation.py` | Adapt | Raw binary command payload coverage started; retire HTTP binary-envelope input cases. |
-| `test_review.py` | Review individually | Preserve engine/lifecycle regressions; retire daemon/client-only cases. |
-| `test_review_findings.py` | Review individually | Preserve fixture cleanup/cancellation cases; retire Python setup/config-only cases. |
-| `test_review_browser.py` | Adapt | Navigation/POST/AJAX, copied snapshots, late stops, action/setup failures, deadlines and cancellation covered; fine-grained cleanup races still under review. |
+| `test_review.py` | Partial | Engine/ownership limits and late-reply regressions retained; capture deadlines, late route installation, original-error preservation and bulk shutdown covered in `cleanup.test.js`/`listener.test.js`; daemon/client-only cases retire; remaining per-scenario audit pending. |
+| `test_review_findings.py` | Migrated/adapted | Abandoning a close wait retains shared cleanup and releases PHP once; Python launch/auth/CLI/server-host portions retire. Core path semantics retain independent coverage. |
+| `test_review_browser.py` | Migrated/adapted | Real PHP navigation completes after disposal during breakpoint setup or DBGp connection loss; route-cleanup failure preserves the action error and permits retry. Persistent-server loss adapts to direct socket/cleanup failures. |
 | `test_browser.py` | Adapt | Core browser behaviours started in `checkout.spec.js`; replace daemon connections with fixture ownership. |
 | `test_integration.py` | Migrated/adapted scenarios | Inspection/mutation/paging in the compatibility/browser suites; independent sessions and stop in stress tests; live stepping, exact hit counts, temporary breakpoints, stdout modes and exception/eval-error recovery in `integration.test.js` (36 cases across six runtimes). HTTP snapshot adapts to same-test browser capture; cross-script client portions retire. Per-assertion audit remains on the migration checklist. |
 | `test_conformance.py` | Partial | Encoding/base64 constraints, command capability gates, optional negotiation failures, refresh and late acknowledgements migrated to `features.test.js`; existing wire/data coverage in `conformance.test.js`; remaining per-scenario audit pending. |

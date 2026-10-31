@@ -2,7 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const net = require('node:net');
 const {once} = require('node:events');
-const {Listener,Xdebug,NAMESPACE} = require('../../core');
+const {Listener,Xdebug,Session,NAMESPACE} = require('../../core');
 const {frame,response,parseCommand,harness} = require('../support/peer');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -10,7 +10,7 @@ async function setup(t,options) {
   const listener = new Listener(options); await listener.listen(0,'127.0.0.1');
   t.after(() => listener.close()); return listener;
 }
-async function engine(t,listener,{idekey = 'test',method = 'GET',uri = '/checkout',holdEval = false,failFeature = false} = {}) {
+async function engine(t,listener,{idekey = 'test',method = 'GET',uri = '/checkout',holdEval = false,failFeature = false,disconnectAt} = {}) {
   const socket = net.connect(listener.port,listener.host); t.after(() => socket.destroy());
   socket.on('error',() => {}); await once(socket,'connect');
   const commands = []; let buffer = Buffer.alloc(0); let seenEval;
@@ -21,6 +21,7 @@ async function engine(t,listener,{idekey = 'test',method = 'GET',uri = '/checkou
       const end = buffer.indexOf(0); if (end < 0) break;
       const request = parseCommand(buffer.subarray(0,end+1)); buffer = buffer.subarray(end+1);
       commands.push(request);
+      if (request.name === disconnectAt) {socket.destroy();return;}
       if (request.name === 'feature_get') {
         const values = {encoding:failFeature ? 'ASCII':'UTF-8',data_encoding:'base64',supports_async:'0',supports_postmortem:'0',breakpoint_types:'line conditional exception call return'};
         socket.write(frame(response(request,'supported="1"',values[request.args.n] ?? '1')));
@@ -113,4 +114,41 @@ test('connection admission rejects only new sockets and retains diagnostics',asy
   const diagnostic = once(listener,'diagnostic');const second = net.connect(listener.port,listener.host);t.after(() => second.destroy());
   await once(second,'connect');await once(second,'close');assert.match((await diagnostic)[0].message,/capacity/);
   assert.equal(first.destroyed,false);assert.match(listener.diagnostics[0].message,/capacity/);
+});
+for (const disconnectAt of ['feature_get','eval']) {
+  test(`disconnect during ${disconnectAt} preparation reaches the waiter and permits the next request`,async t => {
+    const listener = await setup(t),xdebug = owner(t,listener);
+    const failed = assert.rejects(xdebug.waitForSession({timeout:1000}),/connection (?:ended|closed)/i);
+    await engine(t,listener,{disconnectAt});await failed;
+    const following = xdebug.waitForSession({timeout:1000});await engine(t,listener);
+    assert.equal((await following).request.uri,'/checkout');
+  });
+}
+test('listener shutdown closes idle sockets and waits for other owners after a cleanup failure',async t => {
+  const listener = new Listener();await listener.listen(0);
+  t.after(() => listener.close().catch(() => {}));
+  let release;const gate = new Promise(resolve => release = resolve);
+  listener.register({ideKey:'failed',dispose:async () => {throw new Error('owner cleanup failed');}});
+  listener.register({ideKey:'delayed',dispose:async () => gate});
+  const socket = net.connect(listener.port,listener.host);t.after(() => socket.destroy());await once(socket,'connect');await tick();
+  const closed = once(socket,'close');let settled = false;
+  const closing = listener.close().finally(() => {settled = true;});const rejected = assert.rejects(closing,AggregateError);
+  await tick();const early = settled;release();await rejected;await closed;
+  assert.equal(early,false);assert.equal(listener.owners.size,0);
+  const replacement = new Listener();t.after(() => replacement.close());await replacement.listen(listener.port,listener.host);
+});
+test('failed preparation cleanup closes the socket, reports both failures and leaves the listener usable',async t => {
+  const listener = await setup(t),xdebug = owner(t,listener),prepare = Session.prototype.prepare;
+  const original = new Error('preparation failed'),cleanup = new Error('release failed');
+  const diagnosed = new Promise(resolve => listener.on('diagnostic',error => {if (error === cleanup) resolve();}));
+  Session.prototype.prepare = async function () {this.release = async () => {throw cleanup;};throw original;};
+  try {
+    const waiting = assert.rejects(xdebug.waitForSession({timeout:1000}),error => error === original);
+    const peer = await engine(t,listener),closed = once(peer.socket,'close');
+    await waiting;await diagnosed;await closed;
+    assert(listener.diagnostics.some(error => error.message === original.message));
+    assert(listener.diagnostics.some(error => error.message === cleanup.message));
+  } finally {Session.prototype.prepare = prepare;}
+  const following = xdebug.waitForSession({timeout:1000});await engine(t,listener);
+  assert.equal((await following).request.uri,'/checkout');
 });

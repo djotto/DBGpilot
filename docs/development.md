@@ -20,6 +20,11 @@ Xdebug modules. The runtime builder is JavaScript and verifies downloaded source
 checksums before compiling. It does not change the application's PHP-FPM runtime.
 The DBGp proxy is deferred and is not downloaded by setup.
 
+The DDEV demo and browser tests share the checkout application in
+`tests/fixtures/checkout.php`. After `ddev start`, open
+<https://xdebug.ddev.site/> or <https://xdebug.ddev.site/checkout.php> to use its
+form and AJAX examples. The root entry point loads that same checkout file.
+
 The browser suite starts its own PHP server on HTTP port 19434 and Xdebug port
 19433. `PW_PHP_PORT` and `PW_XDEBUG_PORT` override these. Browser stress tests
 start three independent PHP servers using the HTTP port and its next two ports.

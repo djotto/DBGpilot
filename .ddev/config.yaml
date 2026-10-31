@@ -1,6 +1,6 @@
 name: xdebug
 type: php
-docroot: public
+docroot: tests/fixtures
 php_version: "8.4"
 webserver_type: nginx-fpm
 xdebug_enabled: true

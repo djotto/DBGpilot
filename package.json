@@ -24,6 +24,7 @@
     "core.mjs",
     "core.d.ts",
     "lib/*.js",
+    "docs/*.md",
     "examples/standalone.js",
     "README.md",
     "LICENSE",

@@ -25,7 +25,8 @@ function run(command,args,cwd = root) {
 try {
   const pack = JSON.parse(run('npm',['pack','--ignore-scripts','--json','--pack-destination',temp,'--cache',path.join(temp,'cache')]))[0];
   const expected = ['package.json','index.js','index.mjs','index.d.ts','core.js','core.mjs','core.d.ts','LICENSE','NOTICE.md','README.md','examples/standalone.js',
-    ...fs.readdirSync(path.join(packageRoot,'lib')).filter(name => name.endsWith('.js')).map(name => 'lib/'+name)].sort();
+    ...fs.readdirSync(path.join(packageRoot,'lib')).filter(name => name.endsWith('.js')).map(name => 'lib/'+name),
+    ...fs.readdirSync(path.join(packageRoot,'docs')).filter(name => name.endsWith('.md')).map(name => 'docs/'+name)].sort();
   assert.deepEqual(pack.files.map(file => file.path).sort(),expected,'Unexpected npm package payload');
   const consumer = path.join(temp,'consumer');fs.mkdirSync(consumer);
   fs.writeFileSync(path.join(consumer,'package.json'),JSON.stringify({name:'dbgpilot-installed-consumer',private:true,dependencies:{

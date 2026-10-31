@@ -1,6 +1,6 @@
 # Changelog
 
-## JavaScript 0.1.0 — unreleased
+## [JavaScript 0.1.0 — testing 1](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1) — 2026-10-31
 
 - Use `dbgpilot` as the package name, with `dbgpilot` and `dbgpilot/core` imports.
 - Provide a Playwright Test fixture and standalone Node core for PHP/Xdebug.

@@ -9,9 +9,19 @@ TypeScript declarations, a standalone example and bundled Markdown documentation
 The main entry point provides the Playwright Test fixture; `dbgpilot/core` provides
 the independent debugger. No compile step or Python runtime is required.
 
-No JavaScript GitHub release or registry package is published yet. `private: true`
-prevents accidental npm registry publication. Git, local source and tarball installs
-still work. Packaging never uploads an artifact or changes GitHub releases.
+The first JavaScript prerelease is
+[`js-v0.1.0-testing.1`](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1).
+Its assets are `dbgpilot-0.1.0.tgz` and `dbgpilot-0.1.0.tgz.sha256`.
+Install the release asset directly:
+
+```sh
+npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.0-testing.1/dbgpilot-0.1.0.tgz @playwright/test
+```
+
+GitHub is the release destination. The project is not published to the npm
+registry; `private: true` prevents accidental registry publication. Git, local
+source and tarball installs still work. Packaging by itself never uploads an
+artifact or changes GitHub releases.
 
 ## Local candidate
 
@@ -54,7 +64,7 @@ imports; choose a source revision containing that package name.
 ## Preparing a published release
 
 1. Update package version, lockfile and changelog together. Choose a distinct JS
-   tag, such as `js-v0.1.0-testing.1`, so historical Python tags stay identifiable.
+   tag, such as `js-v0.1.1-testing.1`, so historical Python tags stay identifiable.
 2. Run the [full checks](development.md#full-environment), then review the clean
    package report and candidate artifact for that exact source tree.
 3. Commit the reviewed source locally. Push, create a tag, or create a GitHub
@@ -66,10 +76,8 @@ GitHub's automatic source archive includes the development tree; it is not the
 validated npm tarball. Consumers can install the release asset URL or a source
 tag according to their needs. Do not add automatic uploads to setup or tests.
 
-An npm registry release would additionally require deliberately changing
-`private`, selecting an available package/account namespace, and configuring npm
-publishing credentials/access. That is separate from the current source/tarball
-workflow; no registry publication is performed by this project today.
+Keep `private: true`: releases are published on GitHub, with no npm registry
+publication or registry publishing credentials required.
 
 ## Python archive
 

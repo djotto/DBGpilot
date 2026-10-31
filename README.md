@@ -22,25 +22,18 @@ debugging enabled. No Python or pytest is required.
 
 ## Install
 
-The package is named `dbgpilot`. It is currently distributed from source or a
-local tarball; npm registry publication is disabled.
-
-From a checkout, build and validate the installable package:
-
-```sh
-npm ci
-npm run check:package
-```
-
-Then, in the project that will use it:
+The package is named `dbgpilot` and is distributed through
+[GitHub releases](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1).
+Install the validated release tarball in the project that will use it:
 
 ```sh
-npm install --save-dev /absolute/path/DBGpilot/dist/js-candidate/dbgpilot-0.1.0.tgz @playwright/test
+npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.0-testing.1/dbgpilot-0.1.0.tgz @playwright/test
 npx playwright install chromium
 ```
 
+The release includes a SHA-256 checksum. npm registry publication is disabled.
 See [installation alternatives](docs/getting-started.md#installation) for local
-source installs and GitHub commits. The lockfile records the selected package.
+builds, source installs and GitHub commits. Commit the consumer's lockfile.
 
 ## Use the fixture
 

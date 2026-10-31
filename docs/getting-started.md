@@ -16,7 +16,23 @@ configure Xdebug in the application for you.
 ## Installation
 
 The package name is `dbgpilot`. Registry publication is disabled in this source
-tree, so use one of these sources alongside `@playwright/test`.
+tree. Use a GitHub release or one of the other sources below alongside
+`@playwright/test`.
+
+### GitHub release
+
+The first JavaScript prerelease is
+[`js-v0.1.0-testing.1`](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1).
+Install its validated tarball directly:
+
+```sh
+npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.0-testing.1/dbgpilot-0.1.0.tgz @playwright/test
+npx playwright install chromium
+```
+
+The release also provides `dbgpilot-0.1.0.tgz.sha256` for checksum verification.
+This uses GitHub as the package source; it does not install DBGpilot from the
+npm registry.
 
 ### Validated tarball
 
@@ -57,8 +73,8 @@ npm install --save-dev dbgpilot@github:djotto/DBGpilot#main @playwright/test
 
 Replace `main` with a reviewed commit SHA to select a specific revision. Commit
 that project's lockfile. Changes that exist only locally require a local source
-or tarball install. No JavaScript release tag or registry release is currently
-provided. See [distribution](releasing.md).
+or tarball install. The JavaScript release tag above is another source pin;
+there is no npm registry release. See [distribution](releasing.md).
 
 ## PHP and Xdebug configuration
 

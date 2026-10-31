@@ -9,13 +9,13 @@ TypeScript declarations, a standalone example and bundled Markdown documentation
 The main entry point provides the Playwright Test fixture; `dbgpilot/core` provides
 the independent debugger. No compile step or Python runtime is required.
 
-The first JavaScript prerelease is
-[`js-v0.1.0-testing.1`](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1).
-Its assets are `dbgpilot-0.1.0.tgz` and `dbgpilot-0.1.0.tgz.sha256`.
+The current JavaScript prerelease is
+[`js-v0.1.1-testing.1`](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.1-testing.1).
+Its assets are `dbgpilot-0.1.1.tgz` and `dbgpilot-0.1.1.tgz.sha256`.
 Install the release asset directly:
 
 ```sh
-npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.0-testing.1/dbgpilot-0.1.0.tgz @playwright/test
+npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.1-testing.1/dbgpilot-0.1.1.tgz @playwright/test
 ```
 
 GitHub is the release destination. The project is not published to the npm
@@ -40,7 +40,7 @@ SHA-256, version and clean-install evidence. The tarball is
 Install it in another project:
 
 ```sh
-npm install --save-dev /absolute/path/dbgpilot-0.1.0.tgz @playwright/test
+npm install --save-dev /absolute/path/dbgpilot-0.1.1.tgz @playwright/test
 ```
 
 Use the actual generated version filename. A tarball tests the shipped payload;

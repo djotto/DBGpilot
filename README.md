@@ -29,11 +29,11 @@ debugging enabled. No Python or pytest is required.
 ## Install
 
 The package is named `dbgpilot` and is distributed through
-[GitHub releases](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1).
+[GitHub releases](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.1-testing.1).
 Install the validated release tarball in the project that will use it:
 
 ```sh
-npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.0-testing.1/dbgpilot-0.1.0.tgz @playwright/test
+npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.1-testing.1/dbgpilot-0.1.1.tgz @playwright/test
 npx playwright install chromium
 ```
 

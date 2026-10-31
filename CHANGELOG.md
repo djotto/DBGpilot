@@ -1,5 +1,14 @@
 # Changelog
 
+## [JavaScript 0.1.1 — testing 1](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.1-testing.1) — 2026-10-31
+
+- Omit absent execution, frame and breakpoint metadata from snapshots so path
+  fallbacks work when no local path mapping is available.
+- Preserve explicit markers for uninitialized PHP values in variables and
+  expressions, and preserve the default `toJSONSafe()` behavior.
+- Add `toJSONSafe(value, {omitUndefined: true})` to omit undefined object fields.
+- Cover missing, matching and unmatched path mappings with regression tests.
+
 ## [JavaScript 0.1.0 — testing 1](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1) — 2026-10-31
 
 - Use `dbgpilot` as the package name, with `dbgpilot` and `dbgpilot/core` imports.

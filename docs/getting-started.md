@@ -21,16 +21,16 @@ tree. Use a GitHub release or one of the other sources below alongside
 
 ### GitHub release
 
-The first JavaScript prerelease is
-[`js-v0.1.0-testing.1`](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.0-testing.1).
+The current JavaScript prerelease is
+[`js-v0.1.1-testing.1`](https://github.com/djotto/DBGpilot/releases/tag/js-v0.1.1-testing.1).
 Install its validated tarball directly:
 
 ```sh
-npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.0-testing.1/dbgpilot-0.1.0.tgz @playwright/test
+npm install --save-dev https://github.com/djotto/DBGpilot/releases/download/js-v0.1.1-testing.1/dbgpilot-0.1.1.tgz @playwright/test
 npx playwright install chromium
 ```
 
-The release also provides `dbgpilot-0.1.0.tgz.sha256` for checksum verification.
+The release also provides `dbgpilot-0.1.1.tgz.sha256` for checksum verification.
 This uses GitHub as the package source; it does not install DBGpilot from the
 npm registry.
 
@@ -46,7 +46,7 @@ npm run check:package
 In the consuming project:
 
 ```sh
-npm install --save-dev /absolute/path/DBGpilot/dist/js-candidate/dbgpilot-0.1.0.tgz @playwright/test
+npm install --save-dev /absolute/path/DBGpilot/dist/js-candidate/dbgpilot-0.1.1.tgz @playwright/test
 npx playwright install chromium
 ```
 

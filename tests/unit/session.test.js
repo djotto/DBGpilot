@@ -112,6 +112,40 @@ test('snapshot stays JSON safe and independent after PHP changes',async t => {
   }));
   const snapshot = await session.snapshot({variables:['$x']});
   assert.equal(JSON.parse(JSON.stringify(snapshot)).variables.$x.value.value,'9223372036854775807');
+  assert.equal(Object.hasOwn(snapshot.execution,'localFile'),false);
+  assert.equal(Object.hasOwn(snapshot.execution,'pathMappingError'),false);
+  assert.equal(snapshot.execution.localFile ?? snapshot.execution.file,'/app/a.php');
   session.lastResult.status = 'changed'; assert.equal(snapshot.execution.status,'starting');
   assert.equal(session.state,'break');
 });
+for (const mapping of ['none','matched','unmatched']) {
+  test(`snapshot omits absent metadata and preserves PHP values with ${mapping} path mappings`,async t => {
+    const pathMappings = mapping === 'none' ? [] : [{local:'/work',remote:mapping === 'matched' ? 'file:///app':'file:///other'}];
+    const {session,socket} = harness(t,{session:{pathMappings}});
+    socket.on('command',request => queueMicrotask(() => {
+      const index = socket.commands.indexOf(request);
+      if (request.name === 'run') socket.reply(index,'status="break" reason="ok"',
+        '<message filename="file:///app/a.php" lineno="7"/><breakpoint id="bp1" filename="file:///app/a.php" lineno="7"/>');
+      else if (request.name === 'stack_get') socket.reply(index,'',
+        '<stack level="0" where="checkout" filename="file:///app/a.php" lineno="7"><input level="1" filename="file:///app/a.php"/></stack>');
+      else if (request.name === 'property_get') socket.reply(index,'',
+        '<property name="$x" fullname="$x" type="array" numchildren="1"><property name="0" fullname="$x[0]" type="uninitialized"/></property>');
+      else socket.reply(index,'',property('',{type:'uninitialized'}));
+    }));
+    await session.run();
+    const snapshot = await session.snapshot({variables:['$x'],expressions:['$unset']});
+    const records = [snapshot.execution,snapshot.execution.breakpoint,snapshot.frames[0],snapshot.frames[0].inputs[0]];
+    for (const record of records) {
+      assert.equal(Object.hasOwn(record,'localFile'),mapping === 'matched');
+      assert.equal(Object.hasOwn(record,'pathMappingError'),mapping === 'unmatched');
+      assert.equal(record.localFile ?? record.fileUri,mapping === 'matched' ? '/work/a.php':'file:///app/a.php');
+      if (mapping === 'unmatched') assert.match(record.pathMappingError,/no remote root/);
+    }
+    assert.equal(Object.hasOwn(snapshot.execution,'exception'),false);
+    for (const key of ['hitCondition','function','exception','expression']) assert.equal(Object.hasOwn(snapshot.execution.breakpoint,key),false);
+    assert.equal(Object.hasOwn(snapshot.frames[0],'commandBegin'),false);
+    assert.deepEqual(snapshot.variables.$x.children[0].value,{type:'uninitialized'});
+    assert.deepEqual(snapshot.expressions.$unset.value,{type:'uninitialized'});
+    assert.deepEqual(JSON.parse(JSON.stringify(snapshot)),snapshot);
+  });
+}

@@ -97,7 +97,9 @@ code; neither is a passive inspection guarantee.
 `snapshot({variables, expressions, frame, context, depth})` returns execution,
 frames and requested structured properties. It is copied and JSON-safe; later
 stepping or mutation does not change it. Capture helpers obtain an initial
-snapshot automatically.
+snapshot automatically. Absent execution and frame metadata fields are omitted,
+including optional fields in nested breakpoint and input records. Uninitialized
+PHP values in variables and expressions retain the explicit marker below.
 
 `toJSONSafe(value)` is also available for values you assemble yourself:
 
@@ -117,8 +119,12 @@ console.log(JSON.stringify(toJSONSafe({
 | Undefined | `{type: 'uninitialized'}` |
 | Nonfinite number | `{type: 'float', value: 'Infinity'}` (or `-Infinity` / `NaN`) |
 
-Arrays and objects are traversed recursively. This is an export representation;
-there is no automatic inverse conversion or session reconnect encoded in JSON.
+Arrays and objects are traversed recursively. Pass `{omitUndefined: true}` as the
+second argument to omit undefined object properties instead. Top-level undefined
+values and array elements still use the uninitialized marker.
+
+This is an export representation; there is no automatic inverse conversion or
+session reconnect encoded in JSON.
 Use it on debugger data or other acyclic data, not cyclic application objects.
 
 ## Source paths

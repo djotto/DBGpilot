@@ -1,3 +1,9 @@
+Important note: This project is completely vibe-coded, even the docs. I haven't
+even opened most of the files here, and if you use it it's completely at your
+own risk. All the "tests" are LLM-written, too. They mean nothing.
+
+The goal is to allow playwright scripts to interact with xdebug in real time.
+
 # DBGpilot
 
 Drive PHP/Xdebug from JavaScript while Playwright operates the browser. Pause a

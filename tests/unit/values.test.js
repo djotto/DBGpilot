@@ -16,6 +16,15 @@ test('nonfinite floats retain their meaning and serialize explicitly',() => {
   assert.equal(JSON.parse(JSON.stringify(safe)).integer.value,'9223372036854775807');
   assert.equal(safe.binary.data,'/w=='); assert.equal(safe.inf.value,'Infinity');
 });
+test('JSON metadata can omit undefined fields without losing uninitialized values',() => {
+  const marker = {type:'uninitialized'};
+  const value = {absent:undefined,nested:{absent:undefined,none:null},list:[undefined,{absent:undefined}],binary:Buffer.from([255])};
+  assert.deepEqual(toJSONSafe(value,{omitUndefined:true}),{
+    nested:{none:null},list:[marker,{}],binary:{encoding:'base64',data:'/w=='},
+  });
+  assert.deepEqual(toJSONSafe(undefined,{omitUndefined:true}),marker);
+  assert.deepEqual(toJSONSafe({unset:undefined}),{unset:marker});
+});
 test('partial containers retain fetched children and cannot masquerade as PHP strings',() => {
   const value = toValue({type:'array',numchildren:'2',property:[{name:'0',...scalar('int','7')}]});
   assert(value instanceof PartialValue); assert.deepEqual(value.children,[{name:'0',value:7}]); assert.equal(value.totalChildren,2);

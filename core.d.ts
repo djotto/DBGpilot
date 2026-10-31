@@ -122,4 +122,4 @@ export class Listener extends EventEmitter {
   register(owner:Xdebug):Xdebug;unregister(owner:Xdebug):void;
 }
 export class PartialValue {readonly type:string;readonly classname?:string|Buffer;readonly totalChildren:number;readonly children:{name:string|Buffer;value:PHPValue}[];readonly truncated:boolean;readonly rawValue?:Buffer}
-export function toJSONSafe(value:unknown):JSONValue;
+export function toJSONSafe(value:unknown,options?:{omitUndefined?:boolean}):JSONValue;

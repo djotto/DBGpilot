@@ -2,6 +2,11 @@
 
 ## JavaScript 0.1.0 — unreleased
 
+- Close the migration audit for 309 archived test-function families across 34
+  files. Add generated protocol/value and remaining conformance regressions;
+  reject invalid snapshot options before sending commands to PHP. Keep optional
+  proxy/TOML/diagnostics work and target-environment acceptance explicit.
+
 - Migrate failure/cleanup regressions and fix late-installed capture routes,
   preservation of original action errors, and complete shutdown after cleanup
   failures. Add real-browser coverage for setup disposal and DBGp socket loss.

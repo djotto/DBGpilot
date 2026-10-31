@@ -4,6 +4,8 @@ JavaScript controls for PHP/Xdebug, with a Playwright Test fixture. This is the
 JavaScript implementation of DBGpilot; see
 [the migration plan](MIGRATION.md) for completed work and remaining coverage.
 The fixture and the same-process standalone API share one debugger implementation.
+The [final test audit](docs/migration-audit.md) records coverage and deliberate
+retirements; acceptance in the actual consuming environment remains outstanding.
 
 From this repository:
 

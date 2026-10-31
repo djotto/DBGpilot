@@ -1,6 +1,6 @@
 # Migration to JavaScript Playwright
 
-Branch: `migration/playwright`. Approved scope, 2026-10-30: replace the Python
+Implementation: `main`, migrated through `migration/playwright`. Approved scope, 2026-10-30: replace the Python
 DBGpilot implementation with the JavaScript Playwright fixture. The Python
 implementation is preserved on [archive/python](https://github.com/djotto/DBGpilot/tree/archive/python)
 as a behavioural reference. The active tree contains the JavaScript implementation.
@@ -45,6 +45,8 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
 - [x] Port the selected failure/cleanup regressions: stalled writes, setup and
   execution disconnects, late execution ownership, shared close after an abandoned
   wait, slow/late route installation and preservation of primary/cleanup errors.
+- [x] Review the browser diagnostics helper and defer it by user decision;
+  keep existing traces and add diagnostics to individual tests when needed.
 - [x] Port local/remote source mappings and their cross-platform regression cases.
 - [x] Add per-action capture coordination: precise request selection, action
   failure propagation, separate action/debugger deadlines, and bounded cleanup.
@@ -53,8 +55,12 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
 - [x] Verify independent concurrent PHP requests, releasing one while others
   remain paused, owner shutdown, and actual execution termination.
 - [x] Verify browser concurrency and a 35-second pause beyond the capture deadline.
-- [ ] Finish the per-scenario conformance/review audit and reconcile remaining
-  legacy cases. Track behaviour, not a target test count; see the [test inventory](docs/js-test-inventory.md).
+- [x] Audit all 309 named legacy test functions across 34 files and reconcile
+  retained, adapted, retired and deferred scenarios in the [case ledger](docs/migration-audit.json).
+- [ ] Validate GitHub-installed consumption in the actual target environment;
+  the user confirmed that environment is unavailable on this machine.
+- [ ] Publish the first JS release after target-environment acceptance. The
+  validated local candidate remains unpublished.
 - [x] Reproduce the PHP/Xdebug compatibility matrix using the JS implementation.
 - [x] Port Drupal rendering, persisted form save and autocomplete/database
   scenarios from the Python acceptance suite; remove reconnect-only portions.
@@ -66,11 +72,12 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
   Python GitHub releases as drafts, retaining their assets and historical tags.
 - [x] Move the JS package to the repository root for direct GitHub installation.
 - [x] Account for every old test file in the inventory with retained coverage,
-  pending scenarios or a documented retirement/deferment reason.
+  documented retirement/deferment reasons; the function-family audit is complete.
 - [x] Validate the root-package cutover and merge the replacement into `main`.
 
-No new npm package publication, CI provider or release destination is selected
-by this migration. The Python release assets remain retained in unpublished drafts.
+No npm registry publication or CI provider is selected by this migration.
+GitHub source installation is supported; the first JS release remains pending.
+The Python release assets remain retained in unpublished drafts.
 Track limitations, exclusions and deferred decisions in
 [migration exceptions](docs/migration-exceptions.md); ordinary pending work
 stays on the checklist above.
@@ -231,3 +238,25 @@ browser outcomes (one expected assertion failure), six compatibility profiles,
 The early full-check run exposed the CLI-worker scheduling issue above; the
 stress job passed after that harness fix, and package validation then passed
 for the final 20-file tarball and fresh CJS/ESM/TypeScript consumers.
+
+Final coverage audit (2026-10-31): AST enumeration confirms 309 top-level
+test functions in 34 archived files. A preliminary text count of 310 included
+an embedded pytest example; that example is not a separate archived test.
+The ledger classifies 87 covered, 89 adapted, 116 retired and 17 deferred
+functions. Every function is accounted for once, and every referenced JS
+evidence path exists. This is a function-family/scope reconciliation, not a
+claim of identical parametrized cases, APIs or workload counts.
+
+The audit adds 67 Node regressions: 63 protocol/value/conformance cases and
+four listener admission/wait cases. Generated packet and byte-value samples
+use fixed seeds for reproducibility. The only runtime fix rejects invalid
+snapshot arrays, context and depth before any engine command is sent.
+
+Validation: the full DDEV check command passed with 288 Node regressions,
+source and installed TypeScript checks, 19 browser outcomes (one expected
+assertion failure), six compatibility profiles, 36 live integration cases,
+eight Drupal checks, five stress checks and clean 20-file package installation.
+The unpublished 0.1.0 tarball and hash remain under dist/js-candidate and
+test-results/js-package-validation.json. The actual target environment is
+unavailable here, so its acceptance check and JS release publication remain
+outstanding. Optional proxy/TOML/diagnostics work stays deferred.

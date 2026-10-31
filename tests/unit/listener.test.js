@@ -152,3 +152,30 @@ test('failed preparation cleanup closes the socket, reports both failures and le
   const following = xdebug.waitForSession({timeout:1000});await engine(t,listener);
   assert.equal((await following).request.uri,'/checkout');
 });
+test('an occupied port cannot attach to or close the existing listener',async t => {
+  const existing = await setup(t),contender = new Listener();t.after(() => contender.close());
+  await assert.rejects(contender.listen(existing.port,existing.host),/in use/);await contender.close();
+  const xdebug = owner(t,existing),waiting = xdebug.waitForSession({timeout:1000});await engine(t,existing);
+  assert.equal((await waiting).request.uri,'/checkout');
+});
+test('rejected-handshake diagnostics remain bounded and the next valid engine still connects',async t => {
+  const listener = await setup(t),xdebug = owner(t,listener);
+  for (let i=0;i<55;i++) {
+    const socket = net.connect(listener.port,listener.host);await once(socket,'connect');
+    const closed = once(socket,'close');socket.write(frame(`<response xmlns="${NAMESPACE}" command="status" transaction_id="1"/>`));await closed;
+  }
+  assert.equal(listener.diagnostics.length,50);
+  const waiting = xdebug.waitForSession({timeout:1000});await engine(t,listener);assert.equal((await waiting).init.idekey,'test');
+});
+test('a timed-out session waiter does not claim the next PHP request',async t => {
+  const listener = await setup(t),xdebug = owner(t,listener);
+  await assert.rejects(xdebug.waitForSession({timeout:5}),/No Xdebug session/);
+  const following = xdebug.waitForSession({timeout:1000});await engine(t,listener);
+  assert.equal((await following).request.uri,'/checkout');
+});
+test('multiple waiters on the same owner claim distinct sessions',async t => {
+  const listener = await setup(t),xdebug = owner(t,listener);
+  const waiting = [xdebug.waitForSession({timeout:1000}),xdebug.waitForSession({timeout:1000})];
+  await engine(t,listener);await engine(t,listener);
+  const sessions = await Promise.all(waiting);assert.equal(new Set(sessions.map(session => session.id)).size,2);
+});

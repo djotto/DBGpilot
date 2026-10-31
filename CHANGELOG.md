@@ -2,6 +2,10 @@
 
 ## JavaScript 0.1.0 — unreleased
 
+- Port real-Xdebug stepping, hit-count/temporary breakpoint, stdout routing and
+  evaluation-error recovery tests across all six PHP/Xdebug combinations. Add
+  `test:integration` to the full check command and share live runtime profiles.
+
 - Port feature negotiation safeguards: discover command support, expose cached
   capability helpers, preserve encoding/base64 requirements, tolerate unsupported
   optional settings and retain late feature replies.

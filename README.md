@@ -241,6 +241,7 @@ ddev exec npm ci
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:browser
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:drupal
 ddev exec npm run test:compatibility
+ddev exec npm run test:integration
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:stress
 ddev exec npm run check:package
 ```
@@ -248,7 +249,10 @@ ddev exec npm run check:package
 The PHP suite starts a temporary PHP server; the Drupal suite uses the pinned
 fixture provisioned with `ddev drupal-setup`, including real render-only mutation,
 saved Form API changes and author-autocomplete AJAX/database queries. The runtime
-matrix requires the existing cached historical Xdebug modules. The stress suite
+matrix and live integration suite require the cached historical Xdebug modules.
+The integration suite checks stepping,
+exact hit counts, binary stdout routing and evaluation-error recovery across the
+same six runtimes. Its report is `test-results/integration-js.json`. The stress suite
 uses Linux PHP CLI server workers for parallel browser requests and includes a
 35-second pause. See the migration plan for the remaining coverage audit.
 Drupal caches may bypass application breakpoints; choose an executable line

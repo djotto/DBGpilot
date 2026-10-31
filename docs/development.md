@@ -26,6 +26,14 @@ Linux PHP CLI server workers. The runtime matrix tests PHP 8.2–8.5 with the
 installed Xdebug, plus cached PHP 8.2/Xdebug 3.3.2 and PHP 8.3/Xdebug 3.4.7.
 Missing runtimes, Chromium or Drupal sources fail their checks.
 
+`ddev exec npm run test:integration` runs the remaining selected real-Xdebug
+scenarios without a browser: function entry/return, exact hit counts and temporary
+breakpoints, all three stdout routing modes, and recovery from an invalid PHP
+evaluation. It runs 36 scenario checks across those same six runtime combinations.
+Both live suites share `tests/support/runtimes.js`. Runtime versions and case
+results are written to `test-results/integration-js.json`; `check:all` includes
+this suite after the compatibility smoke checks.
+
 The [separate Drupal fixture](../fixtures/drupal11/README.md) sends debugger
 connections to port 9003 in the parent DDEV container. Run its specs with one
 worker and no competing IDE listener. Test-owned PHP sessions are released on

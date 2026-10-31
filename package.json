@@ -34,11 +34,12 @@
     "test:browser": "playwright test --config=playwright.config.js",
     "test:drupal": "playwright test --config=playwright.drupal.config.js",
     "test:compatibility": "node --test tests/live/compatibility.test.js",
+    "test:integration": "node --test tests/live/integration.test.js",
     "test:stress": "node --test tests/live/stress.test.js && playwright test --config=playwright.stress.config.js",
     "test:types": "tsc --project tsconfig.json",
     "check:package": "node scripts/check_js_package.mjs",
     "check:fast": "npm test && npm run test:types",
-    "check:all": "npm run check:fast && npm run test:browser && npm run test:compatibility && npm run test:drupal && npm run test:stress && npm run check:package"
+    "check:all": "npm run check:fast && npm run test:browser && npm run test:compatibility && npm run test:integration && npm run test:drupal && npm run test:stress && npm run check:package"
   },
   "engines": {
     "node": ">=20"

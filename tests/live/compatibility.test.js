@@ -9,10 +9,7 @@ const {Listener,Xdebug} = require('../../core');
 const reportFile = path.resolve(__dirname,'../../test-results/compatibility-js.json');
 fs.mkdirSync(path.dirname(reportFile),{recursive:true});
 const results = [];
-const targets = [
-  ...['8.2','8.3','8.4','8.5'].map(php => ({php,xdebug:'3.5.3'})),
-  {php:'8.2',xdebug:'3.3.2',historical:true},{php:'8.3',xdebug:'3.4.7',historical:true},
-];
+const targets = require('../support/runtimes');
 for (const target of targets) {
   test(`PHP ${target.php} / Xdebug ${target.xdebug}`,{timeout:20000},async t => {
     const executable = `/usr/bin/php${target.php}`;

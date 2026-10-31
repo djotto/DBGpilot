@@ -39,6 +39,9 @@ tests cover PHP/Xdebug and browser behaviour. Protocol tests do not launch brows
 - [x] Port feature negotiation safeguards: encoding/base64 requirements,
   unavailable-command guards, optional feature rejection, cached capability
   helpers and late feature acknowledgement updates. See `features.test.js`.
+- [x] Port the remaining selected real-Xdebug scenarios: stepping into/out of
+  functions, exact hit counts and temporary breakpoints, stdout routing and
+  recovery after an evaluation error, across all six runtime combinations.
 - [x] Port local/remote source mappings and their cross-platform regression cases.
 - [x] Add per-action capture coordination: precise request selection, action
   failure propagation, separate action/debugger deadlines, and bounded cleanup.
@@ -87,6 +90,7 @@ ddev exec npm ci
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:browser
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:drupal
 ddev exec npm run test:compatibility
+ddev exec npm run test:integration
 ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run test:stress
 ddev exec npm run check:package
 ```
@@ -97,7 +101,7 @@ the existing separate Drupal fixture and its configured connection to port 9003
 in the parent DDEV container. Its listener binds `0.0.0.0` for that connection.
 These checks do not modify PHP-FPM settings or start the Python daemon.
 `ddev exec env PLAYWRIGHT_BROWSERS_PATH=/mnt/ddev-global-cache/dbgpilot/playwright npm run check:all`
-runs the new fast, type, browser, compatibility, Drupal, stress and package checks
+runs the fast, type, browser, compatibility, live integration, Drupal, stress and package checks
 in sequence. `ddev test-setup` now installs Node dependencies, Chromium and
 pinned historical Xdebug modules using the JavaScript runtime builder.
 Missing PHP/Xdebug, browser binaries or Drupal sources fail the relevant job;
@@ -178,3 +182,18 @@ feature cases), source TypeScript declarations, all 16 browser outcomes, six
 PHP/Xdebug combinations, eight Drupal checks and five stress checks pass.
 The package check verifies the final 20-file tarball with fresh CJS/ESM and
 installed TypeScript consumers, including the new capability helpers.
+
+Live integration migration (2026-10-31): `tests/live/integration.test.js` ports
+the archived Python stepping/hit-count, output-event and exception/evaluation
+error scenarios. Six cases per runtime cover function entry/return and locals,
+the exact third hit followed by a disabled one-shot breakpoint on the next
+iteration, stdout off/copy/redirect with NUL/invalid UTF-8/Unicode bytes, and
+evaluation failure followed by inspection, successful evaluation, mutation and
+detach. Process stdout, stderr and exit status are verified independently of
+debugger events. All 36 cases pass across the six PHP/Xdebug combinations;
+Node also reports their six parent groups (42 passing test entries).
+The matrix profiles are shared with the compatibility smoke suite. Run with
+`ddev exec npm run test:integration`; `check:all` includes it. Versioned evidence
+is recorded in ignored `test-results/integration-js.json`. No runtime API changes
+were required. Remaining conformance, failure/cleanup and diagnostic audits are
+still tracked separately.

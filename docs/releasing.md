@@ -1,15 +1,15 @@
 # GitHub distribution
 
-The repository root is the `playwright-xdebug` package. It can be installed
+The repository root is the `dbgpilot` package. It can be installed
 directly from GitHub without a build step, Python, a registry or a release asset:
 
 ```sh
-npm install --save-dev playwright-xdebug@github:djotto/DBGpilot#main @playwright/test
+npm install --save-dev dbgpilot@github:djotto/DBGpilot#main @playwright/test
 ```
 
 Use a reviewed commit SHA in place of `main` for an explicit pin. Commit the
 consumer's npm lockfile. The package exports both CommonJS and ESM, with public
-TypeScript declarations and a separate `playwright-xdebug/core` entry point.
+TypeScript declarations and a separate `dbgpilot/core` entry point.
 
 No JavaScript GitHub release or registry package is published yet. `private: true`
 prevents accidental npm registry publication; Git and tarball installs still work.
@@ -22,7 +22,7 @@ To prepare a release candidate:
 3. Run `npm run check:package` or `./scripts/release.sh`. Review the artifact,
    SHA-256 and clean-install evidence in `test-results/js-package-validation.json`.
 4. Commit the reviewed source. Create a tag at that commit and a draft GitHub
-   prerelease with `dist/js-candidate/playwright-xdebug-<version>.tgz` attached.
+   prerelease with `dist/js-candidate/dbgpilot-<version>.tgz` attached.
    Review its notes and publish the draft as a separate explicit action.
 
 Consumers can install the attached tarball URL or the JS tag. Do not treat

@@ -1,5 +1,5 @@
-import {test,expect,PathMapper,Session,toJSONSafe} from 'playwright-xdebug';
-import {Listener,Xdebug,PartialValue} from 'playwright-xdebug/core';
+import {test,expect,PathMapper,Session,toJSONSafe} from 'dbgpilot';
+import {Listener,Xdebug,PartialValue} from 'dbgpilot/core';
 test.use({xdebugPort:9003,xdebugPathMappings:[{local:'C:\\Site',remote:'file:///app'}]});
 test('typed fixture',async ({page,xdebug}) => {
   const paused = await xdebug.goto(page,'http://localhost/',{breakpoints:[{file:'C:\\Site\\index.php',line:10}],variables:['$x']});

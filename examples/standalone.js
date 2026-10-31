@@ -2,7 +2,7 @@
 // DBGPILOT_SCRIPT_LINE=42 node examples/standalone.js
 const {randomUUID} = require('node:crypto');
 const {chromium} = require('playwright');
-const {Listener,Xdebug} = require('playwright-xdebug/core');
+const {Listener,Xdebug} = require('dbgpilot/core');
 
 async function main() {
   const url = process.env.DBGPILOT_SCRIPT_URL;

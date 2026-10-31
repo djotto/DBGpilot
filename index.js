@@ -1,5 +1,5 @@
 // Playwright Test with an `xdebug` fixture. Use in place of @playwright/test:
-//   const { test, expect } = require('playwright-xdebug');
+//   const { test, expect } = require('dbgpilot');
 
 const { test: base, expect } = require('@playwright/test');
 const { randomBytes } = require('crypto');

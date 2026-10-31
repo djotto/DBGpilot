@@ -1,5 +1,5 @@
 {
-  "name": "playwright-xdebug",
+  "name": "dbgpilot",
   "version": "0.1.0",
   "private": true,
   "description": "Playwright Test fixture for driving Xdebug (DBGp) from specs.",

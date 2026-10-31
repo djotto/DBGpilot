@@ -2,6 +2,7 @@
 
 ## JavaScript 0.1.0 — unreleased
 
+- Use `dbgpilot` as the package name, with `dbgpilot` and `dbgpilot/core` imports.
 - Provide a Playwright Test fixture and standalone Node core for PHP/Xdebug.
 - Include CommonJS/ESM exports and TypeScript declarations. Keep DBGp transport,
   packet parsing and command encoding internal to the package.

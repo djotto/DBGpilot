@@ -29,56 +29,56 @@ try {
   assert.deepEqual(pack.files.map(file => file.path).sort(),expected,'Unexpected npm package payload');
   const consumer = path.join(temp,'consumer');fs.mkdirSync(consumer);
   fs.writeFileSync(path.join(consumer,'package.json'),JSON.stringify({name:'dbgpilot-installed-consumer',private:true,dependencies:{
-    'playwright-xdebug':'file:'+path.join(temp,pack.filename),
+    'dbgpilot':'file:'+path.join(temp,pack.filename),
     '@playwright/test':lockedVersion('@playwright/test'),
     typescript:lockedVersion('typescript'),
     '@types/node':lockedVersion('@types/node'),
   }},null,2));
   run('npm',['install','--ignore-scripts','--no-audit','--no-fund','--cache',path.join(temp,'cache')],consumer);
-  const installed = path.join(consumer,'node_modules/playwright-xdebug');
+  const installed = path.join(consumer,'node_modules/dbgpilot');
   for (const name of expected) assert.deepEqual(fs.readFileSync(path.join(installed,name)),fs.readFileSync(path.join(packageRoot,name)),`Installed file differs: ${name}`);
   run(process.execPath,['--input-type=commonjs','-e',String.raw`
     const assert=require('node:assert/strict');
-    const core=require('playwright-xdebug/core');
+    const core=require('dbgpilot/core');
     assert.equal(typeof core.Listener,'function');
     assert.equal(Object.keys(require.cache).some(p=>/node_modules\/(?:@playwright\/test|playwright|playwright-core)\//.test(p)),false);
     assert.equal(core.toJSONSafe({x:9223372036854775807n}).x.value,'9223372036854775807');
-    const {test,expect}=require('playwright-xdebug');
+    const {test,expect}=require('dbgpilot');
     assert.equal(typeof test,'function');assert.equal(typeof expect,'function');
-    for (const api of [core,require('playwright-xdebug')]) {
+    for (const api of [core,require('dbgpilot')]) {
       for (const name of ['Connection','encodeCommand','parsePacket','NAMESPACE']) assert.equal(Object.hasOwn(api,name),false,name+' must remain internal');
     }
-    assert.throws(()=>require('playwright-xdebug/lib/dbgp'),{code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
+    assert.throws(()=>require('dbgpilot/lib/dbgp'),{code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
   `],consumer);
   run(process.execPath,['--input-type=module','-e',String.raw`
     import assert from 'node:assert/strict';
-    import {Listener,PathMapper} from 'playwright-xdebug/core';
-    import {test,expect} from 'playwright-xdebug';
-    import * as core from 'playwright-xdebug/core';
-    import * as fixture from 'playwright-xdebug';
+    import {Listener,PathMapper} from 'dbgpilot/core';
+    import {test,expect} from 'dbgpilot';
+    import * as core from 'dbgpilot/core';
+    import * as fixture from 'dbgpilot';
     assert.equal(typeof Listener,'function');assert.equal(typeof test,'function');assert.equal(typeof expect,'function');
     assert.equal(new PathMapper([{local:'/work',remote:'file:///app'}]).toRemote('/work/a.php'),'file:///app/a.php');
     for (const api of [core,fixture]) for (const name of ['Connection','encodeCommand','parsePacket','NAMESPACE']) assert.equal(Object.hasOwn(api,name),false);
   `],consumer);
   const typed = String.raw`
-    import {test,expect} from 'playwright-xdebug';
-    import {PathMapper,Session} from 'playwright-xdebug/core';
+    import {test,expect} from 'dbgpilot';
+    import {PathMapper,Session} from 'dbgpilot/core';
     // @ts-expect-error raw connections are internal
-    import {Connection} from 'playwright-xdebug/core';
+    import {Connection} from 'dbgpilot/core';
     // @ts-expect-error packet encoders are internal
-    import {encodeCommand} from 'playwright-xdebug/core';
+    import {encodeCommand} from 'dbgpilot/core';
     // @ts-expect-error packet parsers are internal
-    import {parsePacket} from 'playwright-xdebug/core';
+    import {parsePacket} from 'dbgpilot/core';
     // @ts-expect-error protocol constants are internal
-    import {NAMESPACE} from 'playwright-xdebug/core';
+    import {NAMESPACE} from 'dbgpilot/core';
     // @ts-expect-error fixture exports also hide raw connections
-    import {Connection as FixtureConnection} from 'playwright-xdebug';
+    import {Connection as FixtureConnection} from 'dbgpilot';
     // @ts-expect-error fixture exports also hide packet encoders
-    import {encodeCommand as fixtureEncoder} from 'playwright-xdebug';
+    import {encodeCommand as fixtureEncoder} from 'dbgpilot';
     // @ts-expect-error fixture exports also hide packet parsers
-    import {parsePacket as fixtureParser} from 'playwright-xdebug';
+    import {parsePacket as fixtureParser} from 'dbgpilot';
     // @ts-expect-error fixture exports also hide protocol constants
-    import {NAMESPACE as fixtureNamespace} from 'playwright-xdebug';
+    import {NAMESPACE as fixtureNamespace} from 'dbgpilot';
     test.use({xdebugPort:9003,xdebugPathMappings:[{local:'/work',remote:'file:///app'}]});
     test('typed consumer',async({page,xdebug})=>{
       const paused=await xdebug.goto(page,'http://localhost/',{variables:['$x']});

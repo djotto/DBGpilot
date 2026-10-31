@@ -1,4 +1,4 @@
-# playwright-xdebug
+# DBGpilot
 
 JavaScript controls for PHP/Xdebug, with a Playwright Test fixture.
 The fixture and standalone Node API share one debugger implementation.
@@ -13,7 +13,7 @@ npm test
 Install from GitHub in the target project alongside Playwright Test:
 
 ```sh
-npm install --save-dev playwright-xdebug@github:djotto/DBGpilot#main @playwright/test
+npm install --save-dev dbgpilot@github:djotto/DBGpilot#main @playwright/test
 ```
 
 The lockfile records the installed commit. Pin a reviewed commit SHA instead of
@@ -25,18 +25,18 @@ Its two testing releases have been unpublished; their Git tags remain historical
 See [development](docs/development.md) and [releasing](docs/releasing.md).
 
 `npm run check:package` produces a validated, unpublished tarball at
-`dist/js-candidate/playwright-xdebug-0.1.0.tgz`. Install that artifact in an
+`dist/js-candidate/dbgpilot-0.1.0.tgz`. Install that artifact in an
 existing project with:
 
 ```sh
-npm install /absolute/path/playwright-xdebug-0.1.0.tgz @playwright/test
+npm install /absolute/path/dbgpilot-0.1.0.tgz @playwright/test
 ```
 
 TypeScript declarations and native ESM imports are included:
 
 ```js
-import {test, expect} from 'playwright-xdebug';
-import {Listener, PathMapper} from 'playwright-xdebug/core';
+import {test, expect} from 'dbgpilot';
+import {Listener, PathMapper} from 'dbgpilot/core';
 ```
 
 Run `npm run test:types` to check the public declarations against CommonJS and
@@ -44,7 +44,7 @@ ESM consumers. The package validator also checks them after a clean tarball
 installation outside this repository.
 
 ```js
-const {test, expect} = require('playwright-xdebug');
+const {test, expect} = require('dbgpilot');
 
 test('discount applied', async ({page, xdebug}) => {
   const waiting = xdebug.waitForSession({url: '/checkout', method: 'POST'});
@@ -236,7 +236,7 @@ a large object graph is inexpensive.
 The independent core is available without importing Playwright Test:
 
 ```js
-const {Listener, Xdebug, toJSONSafe} = require('playwright-xdebug/core');
+const {Listener, Xdebug, toJSONSafe} = require('dbgpilot/core');
 ```
 
 A standalone script owns its listener, browser context, debugger owner and
